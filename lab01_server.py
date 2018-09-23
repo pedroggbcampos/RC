@@ -10,7 +10,7 @@ def main():
 
   try:
     fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  except socket.error, e:
+  except socket.error as e:
     print "Error creating socket: %s" % e
   
   server_address = (HOST, PORT)
@@ -24,7 +24,7 @@ def main():
   
   try:
     data = connection.recv(BUFFER_SIZE)
-  except socket.error, e:
+  except socket.error as e:
     print "Error receiving message: %s" % e
   
   print data
