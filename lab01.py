@@ -3,7 +3,7 @@ import socket
 import sys
 
 HOST = 'localhost'
-PORT = 58000
+PORT = 58023
 BUFFER_SIZE = 80
 
 if len(sys.argv) == 2:
@@ -31,6 +31,37 @@ elif len(sys.argv) == 5:
 elif len(sys.argv) != 1:
 	print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]\n")
 	exit()
+
+def tcp_client(server_address, msg):
+	try:
+		fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	except socket.error, e:
+		print ("Error creating socket: %s" % e)
+		fd = None
+
+	try:
+		fd.connect(server_address)
+	except socket.error, e:
+		print ("Error connecting to server address %s : %s" % (server_address, e))
+		exit()
+
+	try:
+		fd.sendall(msg)
+	except socket.error, e:
+		print ("Error sending message: '%s' : %s" % (msg, e))
+
+	try:
+		data = fd.recv(BUFFER_SIZE)
+		print (data)
+	except socket.error, e:
+		print ("Error receiving message: %s" % e)
+
+	try:
+		fd.close
+	except socket.error, e:
+		print ("Error closing socket: %s" % e)
+
+	return data
 
 
 def main():
@@ -64,23 +95,9 @@ def main():
 						fd = None
 
 					server_address = (HOST, PORT)
-					try:
-						fd.connect(server_address)
-					except socket.error, e:
-						print ("Error connecting to server address %s : %s" % (server_address, e))
-						exit()
+					msg = "AUT" + " " + user + " " + password 
 
-					try:
-						msg = "AUT" + " " + user + " " + password 
-						fd.sendall(msg)
-					except socket.error, e:
-						print ("Error sending message: '%s' : %s" % (msg, e))
-
-					try:
-						data = fd.recv(BUFFER_SIZE)
-						print (data)
-					except socket.error, e:
-						print ("Error receiving message: %s" % e)
+					data = tcp_client(server_address, msg)
 
 					status = data.split(" ")
 					if status[0] != "AUR":
@@ -92,11 +109,7 @@ def main():
 						print("Authentication failed. Incorrect password")
 					elif status[1] == "NEW":
 						print("Logged in. New user created")
-					try:
-						fd.close
-					except socket.error, e:
-							print ("Error closing socket: %s" % e)
-
+				
 
 					break
 

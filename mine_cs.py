@@ -14,43 +14,43 @@ args = parser.parse_args()
 
 CSPORT = int(args.CSport)
 
-try:
-	s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-except socket.error, e:
-	print "Error creating socket: %s" % e
+def receive_message(client_address)
+	try:
+		s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	except socket.error, e:
+		print "Error creating socket: %s" % e
 
-server_address = (HOST, CSPORT)
-s_tcp.bind(server_address)
-s_tcp.listen(BACKLOG)
-connection_tcp, client_address = s_tcp.accept()
+	client_address = (HOST, CSPORT)
+	try:
+		s_tcp.bind(client_address)
+	except socket.error, e:
+		print "Error binding socket: %s" % e
 
-try:
-	data = connection_tcp.recv(BUFFER_SIZE)
-except  , e:
-	print "Error receiving message: %s" % e
+	try:
+		s_tcp.listen(BACKLOG)
+	except socket.error, e:
+		print "Error listening: %s" % e
+	try:
+		connection_tcp, client_address = s_tcp.accept()
+	except socket.error, e:
+		print "Error accepting connection: %s" % e
 
-login_check(data)
+	try:
+		data = connection_tcp.recv(BUFFER_SIZE)
+	except  , e:
+		print "Error receiving message: %s" % e
 
+	return data
 
-
-while True:
-	pass
-
-
-def login_check(data):
-	data_list = data.split()
-	if data_list[0] != "AUT" or len(data_list[1]) != 5 or not data_list[1].isdigit():
-		return False
-	for c in data_list[2]:
-		if not c.isdigit() and not c.isalpha():
-			return False
-	return True
 
 while True:
-	data_list = receive_message().split()
+	data_list = receive_message(client_address).split()
 	command = data_list[0]
 
-	if command == "DLU":
+	if command == "AUT":
+		
+
+	elif command == "DLU":
 
 	elif command == "BCK":
 
