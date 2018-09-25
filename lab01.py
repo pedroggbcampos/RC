@@ -32,6 +32,9 @@ elif len(sys.argv) != 1:
 	print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]\n")
 	exit()
 
+server_address = (HOST, PORT)
+
+
 def tcp_client(server_address, msg):
 	try:
 		fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -94,7 +97,6 @@ def main():
 						print ("Error creating socket: %s" % e)
 						fd = None
 
-					server_address = (HOST, PORT)
 					msg = "AUT" + " " + user + " " + password 
 
 					data = tcp_client(server_address, msg)
@@ -116,7 +118,16 @@ def main():
 			continue
 
 		elif action == "deluser":
-			print ("! Work in progress...\n")
+			msg = "DLU"
+			data = tcp_client(server_address, msg)
+			status = data.split(" ")
+			if status[0] != "DLR":
+				print ("Error authenticating")
+				break
+			if status[1] == "OK":
+				print("User successfully deleted.")
+			elif status[1] == "NOK":
+				print("Could not delete user. User still has information stored")
 			continue
 
 		elif action == "backup":
@@ -146,36 +157,6 @@ def main():
 		else:
 			print ("Error - Unknown action : %s\n" % action)
 			continue
-	try:
-		fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	except socket.error, e:
-		print ("Error creating socket: %s" % e)
-		fd = None
-
-	server_address = (HOST, PORT)
-
-	try:
- 		fd.connect(server_address)
-	except socket.error, e:
-		print ("Error connecting to server address %s : %s" % (server_address, e))
-		exit()
-
-	try:
-		msg = "OLA"
-		fd.sendall(msg)
-	except socket.error, e:
-		print ("Error sending message: '%s' : %s" % (msg, e))
-
-	try:
-		data = fd.recv(BUFFER_SIZE)
-		print (data)
-	except socket.error, e:
-		print ("Error receiving message: %s" % e)
-
-	try:
-		fd.close
-	except socket.error, e:
-		print ("Error closing socket: %s" % e)
 
 if __name__ =='__main__':
 	main()

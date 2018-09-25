@@ -29,7 +29,7 @@ def main():
   
   print data
   
-  msg = 'AUR OK'
+  msg = 'DLR OK'
 
   connection.sendall(msg)
 
