@@ -29,7 +29,7 @@ def main():
   
   print data
   
-  msg = 'HEY'
+  msg = 'AU'
 
   connection.sendall(msg)
 
