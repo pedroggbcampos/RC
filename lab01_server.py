@@ -5,7 +5,7 @@ import sys
 def main():
 
   HOST = ''
-  PORT = 58000
+  PORT = 58023
   BUFFER_SIZE = 80
 
   try:
@@ -29,7 +29,7 @@ def main():
   
   print data
   
-  msg = 'AU'
+  msg = 'AUR OK'
 
   connection.sendall(msg)
 
