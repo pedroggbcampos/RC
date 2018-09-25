@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import socket
 import sys
+import os
+import datetime
 
 HOST = 'localhost'
 PORT = 58023
@@ -118,20 +120,52 @@ def main():
 			continue
 
 		elif action == "deluser":
-			msg = "DLU"
-			data = tcp_client(server_address, msg)
-			status = data.split(" ")
-			if status[0] != "DLR":
-				print ("Error authenticating")
+			if len(command) != 1:
+				print ("Invalid number of arguments - Correct format is : deluser\n")
 				break
-			if status[1] == "OK":
-				print("User successfully deleted.")
-			elif status[1] == "NOK":
-				print("Could not delete user. User still has information stored")
+			elif len(command) == 1:
+				msg = "DLU"
+				data = tcp_client(server_address, msg)
+				status = data.split(" ")
+				if status[0] != "DLR":
+					print ("Error authenticating")
+					break
+				if status[1] == "OK":
+					print("User successfully deleted.")
+				elif status[1] == "NOK":
+					print("Could not delete user. User still has information stored")
 			continue
 
 		elif action == "backup":
-			print ("! Work in progress...\n")
+			if len(command) != 2:
+				print ("Invalid number of arguments - Correct format is : backup [dir]\n")
+				break
+			elif len(command) == 2:
+				curr_path = os.path.dirname(os.path.abspath(__file__))
+				bck_dir = command[1]
+				dir_path = curr_path + "/" + bck_dir
+				if not os.path.exists(dir_path):
+					print ("Backup Error - Directory provided does not exist")
+					break
+				else:
+					files = os.listdir(dir_path)
+					if not files:
+						print ("Backup Error - There are no files in the directory provided")
+						break
+					else:
+						msg = "BCK " + bck_dir + " " + str(len(files)) + " "
+						for file in files:
+							mtime = os.path.getmtime(dir_path + "/" + file)
+							last_modified_date = datetime.datetime.fromtimestamp(mtime)
+							file_size = os.path.getsize(dir_path + "/" + file)
+							last_modified_date = str(last_modified_date)
+							last_modified_date = last_modified_date.split(".")
+							last_modified_date = last_modified_date[0].decode('utf-8').replace("-".decode('utf-8'), ".").encode('utf-8')
+							msg = msg + file + " " + last_modified_date + " " + str(file_size) + " "
+						tcp_client(server_address, msg)
+
+				break
+
 			continue
 
 		elif action == "restore":
