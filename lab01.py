@@ -162,7 +162,22 @@ def main():
 							last_modified_date = last_modified_date.split(".")
 							last_modified_date = last_modified_date[0].decode('utf-8').replace("-".decode('utf-8'), ".").encode('utf-8')
 							msg = msg + file + " " + last_modified_date + " " + str(file_size) + " "
-						tcp_client(server_address, msg)
+						data = tcp_client(server_address, msg)
+						status = data.split(" ")
+						if status[0] != "BKR":
+							print ("Error in the response for backup request")
+							break
+						if len(status) < 3:
+							print ("Error in the response for backup request")
+							break
+						Bs_ip = status[1]
+						Bs_port = status[2]
+						nr_files = status[3]
+						if nr_files == 0:
+							print ("Files already in backup")
+							break
+						else:
+							tcp_client((Bs_ip, Bs_port), msg)
 
 				break
 
