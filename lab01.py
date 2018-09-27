@@ -8,6 +8,9 @@ HOST = 'localhost'
 PORT = 58023
 BUFFER_SIZE = 80
 
+USER = None
+PASS = None
+
 if len(sys.argv) == 2:
 	print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]\n")
 	exit()
@@ -99,7 +102,7 @@ def main():
 						print ("Error creating socket: %s" % e)
 						fd = None
 
-					msg = "AUT" + " " + user + " " + password 
+					msg = "AUT" + " " + user + " " + password
 
 					data = tcp_client(server_address, msg)
 
@@ -109,11 +112,14 @@ def main():
 						break
 					if status[1] == "OK":
 						print("Logged in. Successful authentication")
+						USER = user
+						PASS = password
 					elif status[1] == "NOK":
 						print("Authentication failed. Incorrect password")
 					elif status[1] == "NEW":
 						print("Logged in. New user created")
-				
+						USER = user
+						PASS = password
 
 					break
 
@@ -167,7 +173,7 @@ def main():
 						if status[0] != "BKR":
 							print ("Error in the response for backup request")
 							break
-						if len(status) < 3:
+						if len(status) < 4:
 							print ("Error in the response for backup request")
 							break
 						Bs_ip = status[1]
@@ -177,18 +183,83 @@ def main():
 							print ("Files already in backup")
 							break
 						else:
-							tcp_client((Bs_ip, Bs_port), msg)
-
+							msg = "AUT" + " " + USER + " " + PASS
+							data = tcp_client((Bs_ip, Bs_port), msg)
+							status = data.split(" ")
+							if status[0] != "AUR":
+								print ("Error authenticating")
+								break
+							if status[1] == "OK":
+								print ("Working on it")
+								#
+								#
+								#
+								#
+								#
+								#
+								#
+							elif status[1] == "NOK":
+								print("Authentication failed.")
 				break
 
 			continue
 
 		elif action == "restore":
-			print ("! Work in progress...\n")
+			if len(command) != 2:
+				print ("Invalid number of arguments - Correct format is : restore [dir]\n")
+				break
+			elif len(command) == 2:
+				directory = command[1]
+				msg = "RST" + " " + directory
+				data = tcp_client(server_address, msg)
+				status = data.split(" ")
+				if status[0] != "RSR":
+					print ("Error in the response for restore request")
+					break
+				if len(status) < 3:
+					print ("Error in the response for restore request")
+					break
+				Bs_ip = status[1]
+				Bs_port = status[2]
+				msg = "AUT" + " " + USER + " " + PASS
+				data = tcp_client((Bs_ip, Bs_port), msg)
+				status = data.split(" ")
+				if status[0] != "AUR":
+					print ("Error authenticating")
+					break
+				if status[1] == "OK":
+					msg = "RSB" + " " + directory
+					data = tcp_client((Bs_ip, Bs_port), msg)
+					#
+					#
+					#
+					#
+					#
+					#
+					#
+				elif status[1] == "NOK":
+					print("Authentication failed.")
+
 			continue
 
 		elif action == "dirlist":
-			print ("! Work in progress...\n")
+			if len(command) != 1:
+				print ("Invalid number of arguments - Correct command is : dirlist\n")
+				break
+			elif len(command) == 1:
+				msg = "LSD"
+				data = tcp_client(server_address, msg)
+				status = data.split(" ")
+				if status[0] != "LDR":
+					print ("Error listing directories")
+					break
+				if status[1] == "0":
+					print ("No directories backed up")
+					break
+				else:
+					print("List of backed up directories:\n")
+					for i in range(2, len(status)):
+						print (status[i])
 			continue
 
 		elif action == "delete":
