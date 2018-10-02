@@ -3,27 +3,24 @@ import sys
 import argparse
 import string
 	
-HOST = ''
+HOST = socket.gethostbyname(socket.gethostname())
 BUFFER_SIZE = 80
 BACKLOG = 1
 
 parser = argparse.ArgumentParser(description='Process invoking command.')
 parser.add_argument('-p', '--CSport', default=58023, type=int, required=False, help='port where the CS server accepts requests')
-
 args = parser.parse_args()
-
 CSPORT = int(args.CSport)
-
 users_dict = {}
 
-def handle(msg):
+ip_cs = (HOST, CSPORT)
+
+def handle_user(msg):
 	data_list = msg.split()
 	command = data_list[0]
-
 	reply = ""
 
 	if command == "AUT":
-
 		reply += "AUR "
 		user = data_list[1]
 		password = data_list[2]
@@ -43,7 +40,6 @@ def handle(msg):
 
 		reply += "DLR "
 
-
 	elif command == "BCK":
 
 	elif command == "RST":
@@ -57,44 +53,59 @@ def handle(msg):
 	return reply
 
 def client_tcp():
-	try:
-		s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	except socket.error, e:
-		print "Error creating socket: %s" % e
+	s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)	
+	s_tcp.bind(ip_cs)
+	s_tcp.listen(BACKLOG)
+	connection_tcp, client_address = s_tcp.accept()
+	msg = connection_tcp.recv(BUFFER_SIZE)
 
-	server_address = (HOST, CSPORT)
+	#como mandar ficheiros grandes sem o sendall
 
-	try:
-		s_tcp.bind(server_address)
-	except socket.error, e:
-		print "Error binding socket: %s" % e
+	connection_tcp.sendall(handle_user(msg))
+	connection_tcp.close()
 
-	try:
-		s_tcp.listen(BACKLOG)
-	except socket.error, e:
-		print "Error listening: %s" % e
+def handle_bs(msg):
+	data_list = msg.split()
+	command = data_list[0]
+	reply = ""
 
-	try:
-		connection_tcp, client_address = s_tcp.accept()
-	except socket.error, e:
-		print "Error accepting: %s" % e
+#Comportamento servidor
 
-	try:
-		msg = connection_tcp.recv(BUFFER_SIZE)
-	except socket.error, e:
-		print "Error receiving message: %s" % e
+	if command == "REG":
+		reply += "RGR "
+		ip_bs = data_list[1]
+		port_bs = data_list[2]
 
-	try:
-		connection_tcp.sendall(handle(msg))
-	except socket.error, e:
-		print "Error sending message: %s" % e
+	elif command == "UNR":
+		reply += "UAR "
+		ip_bs = data_list[1]
+		port_bs = data_list[2]
 
-	try:
-		connection_tcp.close()
-	except socket.error, e:
-		print "Error closing socket: %s" % e
+#Comportamento cliente
 
+	elif command == "LFD":
 
-while True:
-	client_tcp()
-	break
+	elif command == "LUR":
+
+	elif command == "DBR":
+
+	return reply
+
+def server_udp():
+	s_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s_udp.bind(ip_cs)
+	data, bs_address = s_udp.recvfrom(BUFFER_SIZE)
+	s_udp.sendto(handle_bs(data), ) #falta ip e port do bs
+
+def main():
+
+if __name__ == "__main__":
+    main()
+
+#DUVIDAS
+
+#Socket sempre declarado novamente quando se quer iniciar uma comunicação?
+
+#Podemos usar dicionarios no server para guardar os users?
+
+#Na ligação udp também é suposto abrir e fechar socket de cada vez que queremos comunicar, ou pode ficar aberto?
