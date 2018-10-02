@@ -17,7 +17,7 @@ CSNAME= str(args.CSname)
 CSPORT= int(args.CSport)
 
 def tcp_server():
-	server_addr=(CSNAME, BSPORT)
+	server_addr=("localhost", BSPORT)
 
 	try:
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
