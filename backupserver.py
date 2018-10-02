@@ -80,7 +80,5 @@ def udp_server():
 		except socket.error:
 			print 'Error transmiting data[UDP]'
 			break
-
-	s.close()
 	
 	return
