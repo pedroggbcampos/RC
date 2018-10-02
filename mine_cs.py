@@ -35,10 +35,9 @@ def handle_user(msg):
 			users_dict[user] = password
 			print "New user: %s" % user
 			reply += "NEW\n"
-
+	return reply
+'''
 	elif command == "DLU":
-
-		reply += "DLR "
 
 	elif command == "BCK":
 
@@ -48,9 +47,9 @@ def handle_user(msg):
 
 	elif command == "LSF":
 
-	elif command == "DEL":
+	elif command == "DEL":'''
 
-	return reply
+
 
 def client_tcp():
 	s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)	
@@ -76,11 +75,11 @@ def handle_bs(msg):
 		ip_bs = data_list[1]
 		port_bs = data_list[2]
 
-	elif command == "LFD":
+	'''elif command == "LFD":
 
 	elif command == "LUR":
 
-	elif command == "DBR":
+	elif command == "DBR":'''
 
 	return reply
 
