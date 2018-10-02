@@ -8,13 +8,15 @@ BUFFER_SIZE = 80
 BACKLOG = 1
 
 parser = argparse.ArgumentParser(description='Process invoking command.')
-parser.add_argument('-p', '--CSport', default=58023, type=int, required=False, help='port where the CS server accepts requests')
+parser.add_argument('-p', '--CSport', default=58018, type=int, required=False, help='port where the CS server accepts requests')
 
 args = parser.parse_args()
 
 CSPORT = int(args.CSport)
 
 users_dict = {}
+
+s_tcp = None
 
 def handle(msg):
 	data_list = msg.split()
@@ -29,7 +31,7 @@ def handle(msg):
 		password = data_list[2]
 		if user in users_dict:
 			if users_dict.get(user) == password:
-				print "User logged in successefully: %s" % user
+				print "User logged in successfully: %s" % user
 				reply += "OK\n"
 			else:
 				print "User entered wrong password: %s" % user
@@ -42,9 +44,12 @@ def handle(msg):
 	elif command == "DLU":
 
 		reply += "DLR "
+	else:
+		reply = "LFD 123.456.567 50000 3 text.txt dd.mm.yyyy 56 text2.txt dd.mm.yyyy 49 text3.txt dd.mm.yyyy 1000\n"
 
+	return reply
 
-	elif command == "BCK":
+'''	elif command == "BCK":
 
 	elif command == "RST":
 
@@ -53,16 +58,18 @@ def handle(msg):
 	elif command == "LSF":
 
 	elif command == "DEL":
-
-	return reply
+'''
 
 def client_tcp():
 	try:
 		s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		s_tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	except socket.error, e:
 		print "Error creating socket: %s" % e
 
 	server_address = (HOST, CSPORT)
+
+
 
 	try:
 		s_tcp.bind(server_address)
@@ -77,7 +84,7 @@ def client_tcp():
 	try:
 		connection_tcp, client_address = s_tcp.accept()
 	except socket.error, e:
-		print "Error accepting: %s" % e
+		return
 
 	try:
 		msg = connection_tcp.recv(BUFFER_SIZE)
@@ -89,6 +96,19 @@ def client_tcp():
 	except socket.error, e:
 		print "Error sending message: %s" % e
 
+	while(True):
+		try:
+			msg = connection_tcp.recv(BUFFER_SIZE)
+			if msg == "":
+				break
+		except socket.error, e:
+			print "Error receiving message: %s" % e
+
+		try:
+			connection_tcp.sendall(handle(msg))
+		except socket.error, e:
+			print "Error sending message: %s" % e
+
 	try:
 		connection_tcp.close()
 	except socket.error, e:
@@ -97,4 +117,3 @@ def client_tcp():
 
 while True:
 	client_tcp()
-	break

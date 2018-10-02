@@ -5,14 +5,14 @@ import os
 import datetime
 
 HOST = 'localhost'
-PORT = 58023
+PORT = 58018
 BUFFER_SIZE = 80
 
 USER = None
 PASS = None
 
 if len(sys.argv) == 2:
-	print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]\n")
+	print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]")
 	exit()
 elif len(sys.argv) == 3:
 	if sys.argv[1] == "-n":
@@ -20,23 +20,24 @@ elif len(sys.argv) == 3:
 	elif sys.argv[1] == "-p":
 		PORT = sys.argv[2]
 	else:
-		print ("Could not run - Correct format is : ./user.py [-n CSname] [-p CSport]\n")
+		print ("Could not run - Correct format is : ./user.py [-n CSname] [-p CSport]")
 		exit()
 elif len(sys.argv) == 5:
 	if sys.argv[1] == "-n":
 		HOST = sys.argv[2]
 	else:
-		print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]\n")
+		print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]")
 		exit()
 	if sys.argv[3] == "-p":
 		PORT = sys.argv[4]
 	else:
-		print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]\n")
+		print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]")
 		exit()
 elif len(sys.argv) != 1:
-	print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]\n")
+	print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]")
 	exit()
 
+HOST = socket.gethostbyname(HOST)
 server_address = (HOST, PORT)
 
 
@@ -46,7 +47,7 @@ def tcp_client(server_address, msg, authentication):
 		if not validation:
 			if fd != None:
 				close_socket(fd)
-			data = "NOK"
+			data = "NOK\n"
 			return data
 
 	elif authentication == False:
@@ -55,14 +56,14 @@ def tcp_client(server_address, msg, authentication):
 		except socket.error, e:
 			print ("Error creating socket: %s" % e)
 			fd = None
+		try:
+			fd.connect(server_address)
+		except socket.error, e:
+			print ("Error connecting to server address %s : %s" % (server_address, e))
+			exit()
 
 	fd.settimeout(4)
 
-	try:
-		fd.connect(server_address)
-	except socket.error, e:
-		print ("Error connecting to server address %s : %s" % (server_address, e))
-		exit()
 
 	try:
 		fd.sendall(msg)
@@ -71,9 +72,11 @@ def tcp_client(server_address, msg, authentication):
 
 	try:
 		data = fd.recv(BUFFER_SIZE)
+		while(data[-1:] != "\n"):
+			data += fd.recv(BUFFER_SIZE)
 		print (data)
 	except socket.timeout, i:
-		data = "TMO"
+		data = "TMO\n"
 	except socket.error, e:
 		print ("Error receiving message: %s" % e)
 
@@ -117,20 +120,19 @@ def authenticate_user_bool():
 		print ("To execute any command you must login first: login [user] [password]")
 		fd = None
 		return (validation, fd)
-	msg = "AUT" + " " + USER + " " + PASS
+	msg = "AUT" + " " + USER + " " + PASS + "\n"
 	(data, fd)= tcp_client_aut(server_address, msg)
 	if socket_timeout(data):
 		print ("Error authenticating. Connection timeout. Operation cancelled")
 		return (validation, fd)
-
 	status = data.split(" ")
 	if status[0] != "AUR":
 		print ("Error authenticating. Operation cancelled")
 		return (validation, fd)
-	if status[1] == "OK":
+	if status[1] == "OK\n":
 		validation = True
 		return (validation, fd)
-	elif status[1] == "NOK":
+	elif status[1] == "NOK\n":
 		print("Authentication failed. Operation cancelled")
 		return (validation, fd)
 	else:
@@ -145,13 +147,13 @@ def close_socket(fd):
 	return
 
 def socket_timeout(data):
-	if data == "TMO":
+	if data == "TMO\n":
 		return True
 	else:
 		return False
 
 def aut_failed(data):
-	if data == "NOK":
+	if data == "NOK\n":
 		return True
 	else:
 		return False
@@ -161,10 +163,6 @@ def logged_in_bool():
 		return False
 	else:
 		return True
-
-
-
-
 
 def main():
 	while(True):
@@ -191,7 +189,7 @@ def main():
 						print ("Invalid pass - Password must have 8 alphanumerical characters, restricted to letters and numbers\n")
 						break
 
-					msg = "AUT" + " " + user + " " + password
+					msg = "AUT" + " " + user + " " + password + "\n"
 
 					data = tcp_client(server_address, msg, False)
 
@@ -202,17 +200,17 @@ def main():
 					if status[0] != "AUR":
 						print ("Error authenticating")
 						break
-					if status[1] == "OK":
+					if status[1] == "OK\n":
 						print("Logged in. Successful authentication")
 						global USER
 						global PASS
 						USER = user
 						PASS = password
 						break
-					elif status[1] == "NOK":
+					elif status[1] == "NOK\n":
 						print("Authentication failed. Incorrect password")
 						break
-					elif status[1] == "NEW":
+					elif status[1] == "NEW\n":
 						print("Logged in. New user created")
 						USER = user
 						PASS = password
@@ -227,10 +225,10 @@ def main():
 		elif action == "deluser":
 			while(True):
 				if len(command) != 1:
-					print ("Invalid number of arguments - Correct format is : deluser\n")
+					print ("Invalid number of arguments - Correct format is : deluser")
 					break
 				elif len(command) == 1:
-					msg = "DLU"
+					msg = "DLU\n"
 					data = tcp_client(server_address, msg, True)
 					if aut_failed(data):
 						break
@@ -241,9 +239,9 @@ def main():
 					if status[0] != "DLR":
 						print ("Error in message received by user deletion request")
 						break
-					if status[1] == "OK":
+					if status[1] == "OK\n":
 						print("User successfully deleted.")
-					elif status[1] == "NOK":
+					elif status[1] == "NOK\n":
 						print("Could not delete user. User still has information stored")
 				break
 			continue
@@ -251,7 +249,7 @@ def main():
 		elif action == "backup":
 			while(True):
 				if len(command) != 2:
-					print ("Invalid number of arguments - Correct format is : backup [dir]\n")
+					print ("Invalid number of arguments - Correct format is : backup [dir]")
 					break
 				elif len(command) == 2:
 					if not logged_in_bool():
@@ -278,6 +276,7 @@ def main():
 							last_modified_date = last_modified_date.split(".")
 							last_modified_date = last_modified_date[0].decode('utf-8').replace("-".decode('utf-8'), ".").encode('utf-8')
 							msg = msg + file + " " + last_modified_date + " " + str(file_size) + " "
+						msg += "\n"
 						data = tcp_client(server_address, msg, True)
 						if aut_failed(data):
 							break
@@ -323,11 +322,11 @@ def main():
 		elif action == "restore":
 			while(True):
 				if len(command) != 2:
-					print ("Invalid number of arguments - Correct format is : restore [dir]\n")
+					print ("Invalid number of arguments - Correct format is : restore [dir]")
 					break
 				elif len(command) == 2:
 					directory = command[1]
-					msg = "RST" + " " + directory
+					msg = "RST" + " " + directory + "\n"
 					data = tcp_client(server_address, msg, True)
 					if aut_failed(data):
 						break
@@ -343,7 +342,7 @@ def main():
 						break
 					Bs_ip = status[1]
 					Bs_port = status[2]
-					msg = "RSB" + " " + directory
+					msg = "RSB" + " " + directory + "\n"
 					data = tcp_client((Bs_ip, Bs_port), msg, True)
 					if aut_failed(data):
 						break
@@ -364,7 +363,7 @@ def main():
 		elif action == "dirlist":
 			while(True):
 				if len(command) != 1:
-					print ("Invalid number of arguments - Correct command is : dirlist\n")
+					print ("Invalid number of arguments - Correct command is : dirlist")
 					break
 				elif len(command) == 1:
 					msg = "LSD"
@@ -382,20 +381,65 @@ def main():
 						print ("No directories backed up")
 						break
 					else:
-						print("List of backed up directories:\n")
+						print("List of backed up directories:")
 						for i in range(2, len(status)):
 							print (status[i])
 				break
 			continue
 
+		elif action == "filelist":
+			while(True):
+				if len(command) != 2:
+					print ("Invalid number of arguments - Correct command is : filelist [dir]")
+					break
+				elif len(command) == 2:
+					directory = command[1]
+					msg = "LSF" + " " + directory + "\n"
+					data = tcp_client(server_address, msg, True)
+					if aut_failed(data):
+						break
+					if socket_timeout(data):
+						print ("Error connecting to CS for listing files in the previously backed up directory. Connection timeout")
+						break
+					status = data.split(" ")
+
+					if status[0] != "LFD":
+						print ("Error listing files")
+						break
+
+					if status[1] == "NOK\n":
+						print ("Could not complete the file listing request.")
+						break
+
+					if len(status) < 4:
+						print("Error in the response for the file listing request")
+						break
+
+					elif len(status) >= 4:
+						if status[3] == "0":
+							print ("No files to list in directory " + directory )
+							break
+						else:
+							print("Server Backup info where directory %s is located at: " %directory)
+							print("  Server IP: " + status[1])
+							print("  Server PORT: " + status[2])
+							print("  Number of files in directory : " + status[3])
+							print(" Files:")
+							for i in range(4, len(status), 3):
+								print("  " + status[i] + " " + status[i+1] + " " + status[i+2])
+						break
+					break
+			continue
+
+
 		elif action == "delete":
 			while(True):
 				if len(command) != 2:
-					print ("Invalid number of arguments - Correct format is : delete [dir]\n")
+					print ("Invalid number of arguments - Correct format is : delete [dir]")
 					break
 				elif len(command) == 2:
-					msg = "DEL" + " " + command[1]
-					data = tcp_client(server_address, msg)
+					msg = "DEL" + " " + command[1] + "\n"
+					data = tcp_client(server_address, msg, True)
 					if aut_failed(data):
 						break
 					if socket_timeout(data):
@@ -405,14 +449,14 @@ def main():
 					if status[0] != "DDR":
 						print ("Error receiving response to delete directory")
 						break
-					if status[1] == "OK":
+					if status[1] == "OK\n":
 						print ("Directory deleted successfully")
 						break
-					elif status[1] == "NOK":
+					elif status[1] == "NOK\n":
 						print ("Directory not found in backup server")
 						break
 					else:
-						print("Error deleting user\n")
+						print("Error deleting user")
 						for i in range(2, len(status)):
 							print (status[i])
 				break
@@ -423,9 +467,9 @@ def main():
 				if logged_in_bool():
 					USER = None
 					PASS = None
-					print ("Logged out\n")
+					print ("Logged out")
 				elif not logged_in_bool():
-					print ("Error - No user logged in\n")
+					print ("Error - No user logged in")
 				break
 			continue
 
@@ -434,7 +478,7 @@ def main():
 
 		else:
 			if logged_in_bool():
-				print ("Error - Unknown action : %s\n" % action)
+				print ("Error - Unknown action : %s" % action)
 			else:
 				print ("To execute any command you must login first: login [user] [password]")
 			continue

@@ -3,15 +3,15 @@ import socket
 import sys
 
 def msg(i):
-  if i == 1 or i == 2:
-    return "AUR OK"
-  elif i == 3:
-    return "BKR 1060 50000 1"
+  if i == 1 or i == 2 or i == 3:
+    return "AUR OK\n"
+  elif i == 4:
+    return "LFD 123.456.567 50000 text.txt dd.mm.yyyy 56 text2.txt dd.mm.yyyy 49 text3.txt dd.mm.yyyy 1000\n"
 
 def main():
 
   HOST = ''
-  PORT = 58023
+  PORT = 58020
   BUFFER_SIZE = 80
   i = 0
   while(True):
@@ -23,7 +23,6 @@ def main():
       print "Error creating socket: %s" % e
   
     server_address = (HOST, PORT)
-    
     fd.bind(server_address)
 
   
@@ -33,7 +32,9 @@ def main():
     connection, client_address = fd.accept()
   
     try:
+
       data = connection.recv(BUFFER_SIZE)
+
     except socket.error as e:
       print "Error receiving message: %s" % e
   
