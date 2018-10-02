@@ -3,7 +3,7 @@ import sys
 import argparse
 import string
 	
-HOST = socket.gethostbyname(socket.gethostname())
+HOST = ''
 BUFFER_SIZE = 80
 BACKLOG = 1
 
@@ -28,7 +28,7 @@ def handle_user(msg):
 		password = data_list[2]
 		if user in users_dict:
 			if users_dict.get(user) == password:
-				print "User logged in successefully: %s" % user
+				print "User logged in successfully: %s" % user
 				reply += "OK\n"
 			else:
 				print "User entered wrong password: %s" % user
@@ -37,6 +37,9 @@ def handle_user(msg):
 			users_dict[user] = password
 			print "New user: %s" % user
 			reply += "NEW\n"
+
+	else:
+		reply = "LFD 123.456.567 50000 3 text.txt dd.mm.yyyy 56 text2.txt dd.mm.yyyy 49 text3.txt dd.mm.yyyy 1000\n"
 	return reply
 '''
 	elif command == "DLU":
@@ -99,7 +102,7 @@ def client_tcp():
 		print "Error receiving message: %s" % e
 
 	try:
-		connection_tcp.sendall(handle(msg))
+		connection_tcp.sendall(handle_user(msg))
 	except socket.error, e:
 		print "Error sending message: %s" % e
 
@@ -112,7 +115,7 @@ def client_tcp():
 			print "Error receiving message: %s" % e
 
 		try:
-			connection_tcp.sendall(handle(msg))
+			connection_tcp.sendall(handle_user(msg))
 		except socket.error, e:
 			print "Error sending message: %s" % e
 

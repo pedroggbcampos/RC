@@ -6,7 +6,7 @@ def msg(i):
   if i == 1 or i == 2 or i == 3:
     return "AUR OK\n"
   elif i == 4:
-    return "LFD 123.456.567 50000 text.txt dd.mm.yyyy 56 text2.txt dd.mm.yyyy 49 text3.txt dd.mm.yyyy 1000\n"
+    return "LFD 123.456.567 50000 3 text.txt dd.mm.yyyy 56 text2.txt dd.mm.yyyy 49 text3.txt dd.mm.yyyy 1000\n"
 
 def main():
 
