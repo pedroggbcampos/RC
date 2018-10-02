@@ -58,9 +58,6 @@ def client_tcp():
 	s_tcp.listen(BACKLOG)
 	connection_tcp, client_address = s_tcp.accept()
 	msg = connection_tcp.recv(BUFFER_SIZE)
-
-	#como mandar ficheiros grandes sem o sendall
-
 	connection_tcp.sendall(handle_user(msg))
 	connection_tcp.close()
 
@@ -68,8 +65,6 @@ def handle_bs(msg):
 	data_list = msg.split()
 	command = data_list[0]
 	reply = ""
-
-#Comportamento servidor
 
 	if command == "REG":
 		reply += "RGR "
@@ -80,8 +75,6 @@ def handle_bs(msg):
 		reply += "UAR "
 		ip_bs = data_list[1]
 		port_bs = data_list[2]
-
-#Comportamento cliente
 
 	elif command == "LFD":
 
@@ -95,17 +88,10 @@ def server_udp():
 	s_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	s_udp.bind(ip_cs)
 	data, bs_address = s_udp.recvfrom(BUFFER_SIZE)
-	s_udp.sendto(handle_bs(data), ) #falta ip e port do bs
+	#s_udp.sendto(handle_bs(data), ) #falta ip e port do bs
 
 def main():
+	client_tcp()
 
 if __name__ == "__main__":
     main()
-
-#DUVIDAS
-
-#Socket sempre declarado novamente quando se quer iniciar uma comunicação?
-
-#Podemos usar dicionarios no server para guardar os users?
-
-#Na ligação udp também é suposto abrir e fechar socket de cada vez que queremos comunicar, ou pode ficar aberto?
