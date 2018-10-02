@@ -60,6 +60,30 @@ def handle(msg):
 	elif command == "DEL":
 '''
 
+
+def handle_bs(msg):
+	data_list = msg.split()
+	command = data_list[0]
+	reply = ""
+
+	if command == "REG":
+		reply += "RGR "
+		ip_bs = data_list[1]
+		port_bs = data_list[2]
+
+	elif command == "UNR":
+		reply += "UAR "
+		ip_bs = data_list[1]
+		port_bs = data_list[2]
+
+	return reply
+
+	'''elif command == "LFD":
+	elif command == "LUR":
+	elif command == "DBR":'''
+
+'''return reply'''
+
 def client_tcp():
 	try:
 		s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -114,6 +138,16 @@ def client_tcp():
 	except socket.error, e:
 		print "Error closing socket: %s" % e
 
+def server_udp():
+	s_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s_udp.bind(ip_cs)
+	data, bs_address = s_udp.recvfrom(BUFFER_SIZE)
+#s_udp.sendto(handle_bs(data), ) #falta ip e port do bs
 
-while True:
-	client_tcp()
+
+def main():
+	while True:
+		client_tcp()
+
+if __name__ == "__main__":
+	main()
