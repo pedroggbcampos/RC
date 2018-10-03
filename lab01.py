@@ -164,6 +164,12 @@ def logged_in_bool():
 	else:
 		return True
 
+def read_file(file_path):
+	file = open(file_path, mode="r")
+	content = file.read()
+	file.close()
+	return content
+
 def main():
 	while(True):
 		command = raw_input()
@@ -298,16 +304,23 @@ def main():
 							print ("Files already backed up")
 							break
 						else:
-
-							data = tcp_client((Bs_ip, Bs_port), msg)
+							data = tcp_client(server_address, msg, True)
 							if aut_failed(data):
 								break
 							if socket_timeout(data):
 								print ("Error connecting to BS to send backup files. Connection timeout")
 								break
 							status = data.split(" ")
-
-							
+							data = "UPL " + bck_dir + " " + nr_files
+							for i in range(4, len(status), 3):
+								data += " " + status[i] + " " + status[i+1] + " " + status[i+2]
+								##### GET FILE DATA #######
+								#  DATA += DATA DO FICHEIRO
+								file_path = dir_path + "/" + status[i]
+								file = open(file_path, mode="r")
+								content = read_file(file_path)
+								data += " " + content
+							print data							
 								#
 								#
 								#
