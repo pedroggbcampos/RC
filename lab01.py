@@ -294,40 +294,51 @@ def main():
 						if status[0] != "BKR":
 							print ("Error in the response for backup request")
 							break
-						if len(status) < 4:
+						if status[1] == "EOF":
+							print ("Could not complete restore request. No backup servers available")
+							break
+						elif status[1] == "ERR":
+							print ("Request was not well formulated")
+							break
+						if len(status) != 4:
 							print ("Error in the response for backup request")
 							break
 						Bs_ip = status[1]
 						Bs_port = status[2]
 						nr_files = status[3]
-						if nr_files == 0:
+						if int(nr_files) == 0:
 							print ("Files already backed up")
 							break
 						else:
-							data = tcp_client(server_address, msg, True)
+							msg = "UPL " + bck_dir + " " + nr_files
+							file_names = ""
+							for i in range(4, len(status), 3):
+								msg += " " + status[i] + " " + status[i+1] + " " + status[i+2]
+								file_names += status[i] + "\n"
+								file_path = dir_path + "/" + status[i]
+								file = open(file_path, mode="r")
+								content = read_file(file_path)
+								msg += " " + content
+							msg += "\n"
+							data = tcp_client(server_address, msg, True)  ################ mudar server address para o do backup	--> data = tcp_client((Bs_ip, Bs_port), msg, True)
 							if aut_failed(data):
 								break
 							if socket_timeout(data):
 								print ("Error connecting to BS to send backup files. Connection timeout")
 								break
 							status = data.split(" ")
-							data = "UPL " + bck_dir + " " + nr_files
-							for i in range(4, len(status), 3):
-								data += " " + status[i] + " " + status[i+1] + " " + status[i+2]
-								##### GET FILE DATA #######
-								#  DATA += DATA DO FICHEIRO
-								file_path = dir_path + "/" + status[i]
-								file = open(file_path, mode="r")
-								content = read_file(file_path)
-								data += " " + content
-							print data							
-								#
-								#
-								#
-								#
-								#
-								#
-								#
+
+							if status[0] != "UPR":
+								print ("Error in the response for backup request")
+								break
+							if status[1] == "OK\n" :
+								print ("Backup completed")
+								print ("Directory : %s" % bck_dir)
+								print (file_names)
+								break
+							elif status[1] == "NOK\n" :
+								print ("Error backing up directory")
+								break
 				break
 
 			continue
@@ -350,19 +361,63 @@ def main():
 					if status[0] != "RSR":
 						print ("Error in the response for restore request")
 						break
-					if len(status) < 3:
+					if status[1] == "EOF":
+						print ("Could not complete restore request. No backup servers available")
+						break
+					elif status[1] == "ERR":
+						print ("Request was not well formulated")
+						break
+					if len(status) != 3:
 						print ("Error in the response for restore request")
 						break
 					Bs_ip = status[1]
 					Bs_port = status[2]
 					msg = "RSB" + " " + directory + "\n"
-					data = tcp_client((Bs_ip, Bs_port), msg, True)
+					data = tcp_client(server_address, msg, True)  ################ mudar server address para o do backup	--> data = tcp_client((Bs_ip, Bs_port), msg, True)
 					if aut_failed(data):
 						break
 					if socket_timeout(data):
 						print ("Error connecting to BS for restore request. Connection timeout")
 						break
 					status = data.split(" ")
+					if status[0] != "RBR":
+						print ("Error in the response for restore request")
+						break
+					if status[1] == "EOF":
+						print ("Could not complete restore request. No backup servers available")
+						break
+					elif status[1] == "ERR":
+						print ("Request was not well formulated")
+						break
+					if len(status) < 2:
+						print ("Error in the response for restore request")
+						break
+					nr_files = status[1]
+					bite = len(status[0]) + len(nr_files) + 2
+					if int(nr_files) == 0:
+						print ("No files to restore")
+						break
+					else:
+						data = data[bite:]
+						file_names = ""
+						for f in range(0, int(nr_files)):
+							file_info = data.split(" ")
+							bite = len(file_info[0]) + len(file_info[1]) + len(file_info[2]) + 3
+							data = data[bite:]
+							print file_info
+
+							file = open(directory + "/" + file_info[0] , "w")
+							for c in range (0, int(file_info[2])):
+								file.write(data[c])
+							file.close()
+							file_names += file_info[0] + "\n"
+							bite = int(file_info[2]) + 1
+							data = data[bite:]
+						print("Successful restore")
+						print("Directory: %s" % directory)
+						print(file_names)
+						break
+
 						#
 						#
 						#
