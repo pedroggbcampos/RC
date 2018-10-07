@@ -4,6 +4,7 @@ import argparse
 import string
 import os
 import shutil
+import signal
 from threading import Thread
 
 BUFFER_SIZE=80
@@ -97,11 +98,11 @@ def udp_server_init():
 		print 'Error binding socket to address[UDP]'
 		sys.exit()
 
-	msg = "REG " + IPBS + " " + BSPORT + "\n"
+	msg = "REG " + str(IPBS) + " " + str(BSPORT) + "\n"
 	bytes = len(msg)
 	try:
 		bytes_sent = s.sendto(msg, cs_addr)
-		if bytes_sent != bytes or bytes_sent ≃= -1:
+		if bytes_sent != bytes or bytes_sent == -1:
 			print 'Error sending data[UDP]'
 	except socket.error:
 		print 'Error sending data[UDP]'
@@ -109,6 +110,10 @@ def udp_server_init():
 	return s
 
 def udp_server(s):
+
+	ip_cs = socket.gethostbyname(CSNAME)
+
+	cs_addr =(ip_cs, CSPORT)
 
 	try:
 		data,addr=s.recvfrom(BUFFER_SIZE)
@@ -121,7 +126,7 @@ def udp_server(s):
 		bytes = len(msg)
 		try:
 			bytes_sent = s.sendto(msg, cs_addr)
-			if bytes_sent != bytes or bytes_sent ≃= -1:
+			if bytes_sent != bytes or bytes_sent == -1:
 				print 'Error sending data[UDP]'
 		except socket.error:
 			print 'Error sending data[UDP]'
@@ -267,6 +272,7 @@ def find_dir(user, dir):
 
 def signal_handler(sig, frame):
 	###
+	print("\n")
 	sys.exit(0)
 
 def main():

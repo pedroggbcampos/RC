@@ -14,8 +14,13 @@ args = parser.parse_args()
 
 CSPORT = int(args.CSport)
 
+adrr_cs = (HOST, CSPORT)
+
 users_dict = {}
 
+user_dir_list = []
+
+last_user = ""
 
 def handle_user(msg):
 	data_list = msg.split()
@@ -35,8 +40,14 @@ def handle_user(msg):
 				reply += "NOK\n"
 		else:
 			users_dict[user] = password
+			global last_user
+			last_user = user
 			print "New user: %s" % user
 			reply += "NEW\n"
+
+	elif command == "DLU":
+		reply += "DLR "
+
 
 	else:
 		reply = "LFD 123.456.567 50000 3 text.txt dd.mm.yyyy 56 text2.txt dd.mm.yyyy 49 text3.txt dd.mm.yyyy 1000\n"
@@ -118,6 +129,7 @@ def client_tcp():
 			connection_tcp.sendall(handle_user(msg))
 		except socket.error, e:
 			print "Error sending message: %s" % e
+		break
 
 	try:
 		connection_tcp.close()
@@ -127,12 +139,13 @@ def client_tcp():
 
 def server_udp():
 	s_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	s_udp.bind(ip_cs)
+	s_udp.bind(("", port_bs)
 	data, bs_address = s_udp.recvfrom(BUFFER_SIZE)
 #s_udp.sendto(handle_bs(data), ) #falta ip e port do bs
 
 
 def main():
+
 	while True:
 		client_tcp()
 
