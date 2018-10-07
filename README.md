@@ -1,7 +1,6 @@
 # RC
 # BS
 * SignalHandler
-* SigPipe
-* Select 
+* UPL
 # USER
 * BCK and RST
