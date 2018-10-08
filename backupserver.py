@@ -204,10 +204,6 @@ def remove_dir(nid, dir):
 	shutil.rmtree(path)
 	return
 
-def is_user_dir(ud, dir):
-
-	return
-
 def is_user(id, p):
 	try:
 		f = open("user_" + id + ".txt", "r")
@@ -241,18 +237,57 @@ def handler_USER(msg):
 			n_msg="AUR NOK\n"
 
 	elif msg[0]=="UPL":
+
+		###perceber
+		data = data[bite:]
+		file_names = ""
+		for f in range(0, int(nr_files)):
+			file_info = data.split(" ")
+			bite = len(file_info[0]) + len(file_info[1]) + len(file_info[2]) + 3
+			data = data[bite:]
+			print file_info
+
+			file = open(directory + "/" + file_info[0] , "w")
+			for c in range (0, int(file_info[2])):
+				file.write(data[c])
+			file.close()
+			file_names += file_info[0] + "\n"
+			bite = int(file_info[2]) + 1
+			data = data[bite:]
+		print("Successful restore")
+		print("Directory: %s" % directory)
+		print(file_names)
+		break		
+
+		###perceber
+
+'''
 		if transfer(msg[1], msg[2], msg[3]):
 			n_msg="UPR OK\n"
 		else:
 			n_msg="UPR NOK\n"
-
+'''
 	elif msg[0]=="RSB":
 		if (len(msg)==2 and isinstance(msg[1], str)):
 			if find_dir(msg[1]):
-				#:::esta mal
-				d=get_dir(msg[1])
-				#:::
-				n_msg="RBR" + len(d) + " " + d
+				n_msg = "RBR "
+				path = "/" + msg[1] 
+				files = os.listdir(dir_path)
+				n_msg = n_msg + len(files) + " "
+				for file in files:
+					mtime = os.path.getmtime(dir_path + "/" + file)
+					last_modified_date = datetime.datetime.fromtimestamp(mtime)
+					file_size = os.path.getsize(dir_path + "/" + file)
+					last_modified_date = str(last_modified_date)
+					last_modified_date = last_modified_date.split(".")
+					last_modified_date = last_modified_date[0].decode('utf-8').replace("-".decode('utf-8'), ".").encode('utf-8')
+					n_msg = n_msg + file + " " + last_modified_date + " " + str(file_size) + " "
+
+					file = open(path, mode="r")
+					content = read_file(path)
+					n_msg += content
+
+				n_msg += "\n"
 			else:
 				n_msg="RBR EOF"
 		else:
@@ -263,6 +298,12 @@ def handler_USER(msg):
 
 	return n_msg
 
+
+def read_file(file_path):
+	file = open(file_path, mode="r")
+	content = file.read()
+	file.close()
+	return content
 
 def transfer(dir, n, files):
 	return
