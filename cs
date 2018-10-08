@@ -18,7 +18,7 @@ HOME = os.getcwd()
 cs_address = (HOST, CSPORT)
 
 def utf8len(string):
-	return len(s.encode('utf-8'))
+	return len(string.encode('utf-8'))
 
 def empty_dir(path):
 	return len(os.listdir(path)) == 0
@@ -31,9 +31,14 @@ def tcp_init():
 	connection_tcp, client_address = s_tcp.accept()
 	return connection_tcp
 
-def udp_init():
+def udp_server_init():
 	c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	c.bind(cs_address)
+	return c
+
+def udp_client_init(address):
+	c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	c.bind(address)
 	return c
 
 def tcp_receive(connection):
@@ -69,6 +74,15 @@ def udp_terminate(connection):
 
 def tcp_terminate(connection):
 	connection.close()
+
+def get_bs_address(d):
+	path = HOME + "/" + dirname + "/" + d
+	os.chdir(path)
+	f = open("ip_port.txt", "r")
+	line = f.read()
+	line_info = line.split()
+	os.chdir(HOME)
+	return line_info
 
 def handle_bs(connection, msg):
 	data_list = msg.split()
@@ -125,8 +139,6 @@ def handle_bs(connection, msg):
 		print "-BS: " + ip_bs + " " + port_bs
 		reply += "OK\n"
 		udp_send(connection, reply, bs_address)
-	
-	return
 
 def handle_user(connection, aut):
 	aut_list = aut.split()
@@ -210,24 +222,70 @@ def handle_user(connection, aut):
 			tcp_send(connection, reply)
 
 		elif command == "LSF": #incompleto
-			reply += "LFD "
+			reply += "LFD"
+			user_dir = data_list[1]
+			msg = "DLB "
+			user_dir = data_list[1]
+			bs_info = get_bs_address(user_dir)
+			ip_bs = bs_info[0]
+			port_bs = bs_info[1]
+			bs_address = (ip_bs, port_bs)
+			c = udp_client_init(bs_address)
+			msg += user + " " + user_dir
+			udp_send(c, msg, bs_address)
+			bs_msg = udp_receive(c)
+			udp_terminate(c)
+			bs_msg_list = bs_msg.split()
+			response = bs_msg_list[0]
+			if response == "LFD":
+				reply_list = [n]
+				bs_msg_list[2:]
+				reply_list += bs_msg_list
+				for i in reply_list:
+					reply += " " + i
+				reply += "\n"
+			tcp_send(connection, reply)
 
 		elif command == "DEL": #incompleto
 			reply += "DDR "
+			msg = "DLB "
+			user_dir = data_list[1]
+			bs_info = get_bs_address(user_dir)
+			ip_bs = bs_info[0]
+			port_bs = bs_info[1]
+			bs_address = (ip_bs, port_bs)
+			c = udp_client_init(bs_address)
+			msg += user + " " + user_dir
+			udp_send(c, msg, bs_address)
+			bs_msg = udp_receive(c)
+			udp_terminate(c)
+			bs_msg_list = bs_msg.split()
+			response = bs_msg_list[0]
+			status = bs_msg_list[1]
+			if response == "DBR":
+				if status == "OK":
+					reply += "OK\n"
+				elif status == "NOK":
+					reply += "NOK\n"
+				elif status == "ERR":
+					reply += "ERR\n"
+			tcp_send(connection, reply)
 
 	return
 
 def user_tcp():
-	c = tcp_init()
-	msg = tcp_receive(c)
-	handle_user(c, msg)
-	tcp_terminate()
+	while True:
+		c = tcp_init()
+		msg = tcp_receive(c)
+		handle_user(c, msg)
+		tcp_terminate()
+	
 
 def bs_udp():
-	c = udp_init()
-	msg = udp_receive(c)
-	handle_bs(c, msg)
-	udp_terminate()
+	c = udp_server_init()
+	while True:
+		msg = udp_receive(c)
+		handle_bs(c, msg)
 
 def main():
 	try:
@@ -235,11 +293,9 @@ def main():
 	except OSError as e:
 		print ("Error creating child process: %s" % e)
 	if pid == 0:
-		while True:
-			bs_udp()
+		bs_udp()
 	else:
-		while True:
-			user_tcp()
+		user_tcp()
 
 if __name__ == "__main__":
 	main()
