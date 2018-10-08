@@ -23,25 +23,6 @@ def utf8len(string):
 def empty_dir(path):
 	return len(os.listdir(path)) == 0
 
-def handle_bs(msg):
-	data_list = msg.split()
-	command = data_list[0]
-	reply = ""
-
-	if command == "REG":
-		reply += "RGR "
-		ip_bs = data_list[1]
-		port_bs = data_list[2]
-
-	elif command == "UNR":
-		reply += "UAR "
-		ip_bs = data_list[1]
-		port_bs = data_list[2]
-	'''elif command == "LFD":
-	elif command == "LUR":
-	elif command == "DBR":'''
-	return reply
-
 def tcp_init():
 	s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s_tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -49,6 +30,11 @@ def tcp_init():
 	s_tcp.listen(BACKLOG)
 	connection_tcp, client_address = s_tcp.accept()
 	return connection_tcp
+
+def udp_init():
+	c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	c.bind(cs_address)
+	return c
 
 def tcp_receive(connection):
 	msg = connection.recv(BUFFER_SIZE)
@@ -58,14 +44,89 @@ def tcp_receive(connection):
 		msg += connection.recv(BUFFER_SIZE)
 	return msg
 
+def udp_receive(connection):
+	msg = connection.recvfrom(BUFFER_SIZE)
+	if msg == 0:
+		return None
+	while msg[-1] != "\n":
+		msg += connection.recvfrom(BUFFER_SIZE)
+	return msg
+
+def udp_send(connection, msg, address):
+	total = utf8len(msg)
+	sent = 0
+	while sent < total:
+		sent += connection.sendto(msg, address)
+
 def tcp_send(connection, msg):
 	total = utf8len(msg)
 	sent = 0
 	while sent < total:
 		sent += connection.send(msg)
 
+def udp_terminate(connection):
+	connection.close()
+
 def tcp_terminate(connection):
 	connection.close()
+
+def handle_bs(connection, msg):
+	data_list = msg.split()
+	command = data_list[0]
+	reply = ""
+
+	if command == "REG": #completo
+		reply += "RGR "
+		ip_bs = data_list[1]
+		port_bs = data_list[2]
+		bs_address = (ip_bs, port_bs)
+		if len(data_list) != 3:
+			print "Protocol (syntax) error"
+			reply += "ERR\n"
+			udp_send(connection, reply, bs_address)
+			return
+		bs = ip_bs + " " + port_bs + "\n"
+		try:
+			f = open("bs_list", "w")
+			f.write(bs)
+			f.close()
+		except IOError as e:
+			print ("Error registering BS: %s" % e)
+			reply += "NOK\n"
+			udp_send(connection, reply, bs_address)
+		print "+BS: " + ip_bs + " " + port_bs
+		reply += "OK\n"
+		udp_send(connection, reply, bs_address)
+
+	elif command == "UNR": #incompleto
+		reply += "UAR "
+		ip_bs = data_list[1]
+		port_bs = data_list[2]
+		bs_address = (ip_bs, port_bs)
+		if len(data_list) != 3:
+			print "Protocol (syntax) error"
+			reply += "ERR\n"
+			udp_send(connection, reply, bs_address)
+			return
+		bs = ip_bs + " " + port_bs + "\n"
+		try:
+			f = open("bs_list", "r")
+			bs_list = f.readlines()
+			f.close()
+			f = open("bs_list", "w")
+			for line in bs_list:
+				if line != bs:
+					f.write(line)
+			f.close()
+		except IOError as e:
+			print ("Error deregistering BS: %s" % e)
+			reply += "NOK\n"
+			udp_send(connection, reply, bs_address)
+		print "-BS: " + ip_bs + " " + port_bs
+		reply += "OK\n"
+		udp_send(connection, reply, bs_address)
+	
+	return
 
 def handle_user(connection, aut):
 	aut_list = aut.split()
@@ -163,15 +224,22 @@ def user_tcp():
 	tcp_terminate()
 
 def bs_udp():
-	s_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	s_udp.bind(ip_cs)
-	data, bs_address = s_udp.recvfrom(BUFFER_SIZE)
-#s_udp.sendto(handle_bs(data), ) #falta ip e port do bs
-
+	c = udp_init()
+	msg = udp_receive(c)
+	handle_bs(c, msg)
+	udp_terminate()
 
 def main():
-	while True:
-		user_tcp()
+	try:
+		pid = os.fork()
+	except OSError as e:
+		print ("Error creating child process: %s" % e)
+	if pid == 0:
+		while True:
+			bs_udp()
+	else:
+		while True:
+			user_tcp()
 
 if __name__ == "__main__":
 	main()
