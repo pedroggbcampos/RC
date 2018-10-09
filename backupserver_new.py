@@ -314,28 +314,33 @@ def handler_USER(msg):
 			n_msg="AUR NOK\n"
 
 	elif msg[0]=="UPL":
-
-		###perceber
-		data = data[bite:]
-		file_names = ""
-		for f in range(0, int(nr_files)):
-			file_info = data.split(" ")
-			bite = len(file_info[0]) + len(file_info[1]) + len(file_info[2]) + 3
-			data = data[bite:]
-			print file_info
-
-			file = open(directory + "/" + file_info[0] , "w")
-			for c in range (0, int(file_info[2])):
-				file.write(data[c])
+		dir=msg[1]
+		os.mkdir(dir)
+		no_files=msg[2]
+		bite=len(msg[1])+len(no_files)+2
+		msg=msg[bite:]
+		print dir+"\n"
+		for i in range(0, int(no_files)):
+			f_info=msg.split(" ")
+			bite = len(f_info[0]) + len(f_info[1]) + len(f_info[2]) + 3
+			msg=msg[bite:]
+			f_name=f_info[0]
+			f_date=f_info[1]
+			f_size=f_info[2]
+			
+			file=open(dir + "/" + f_name, "wb")
+			for c in range(int(f_size)):
+				f_content+=file.write(msg[c])
 			file.close()
-			file_names += file_info[0] + "\n"
-			bite = int(file_info[2]) + 1
-			data = data[bite:]
-		print("Successful restore")
-		print("Directory: %s" % directory)
-		print(file_names)		
 
-		###perceber
+			print f_name + f_size + " Bytes received" + "\n"
+
+			bite = int(f_info[2]) + 1
+			msg = msg[bite:]
+
+		n_msg="UPR OK"
+		#falta o NOK
+				
 	elif msg[0]=="RSB":
 		if (len(msg)==2 and isinstance(msg[1], str)):
 			if find_dir(msg[1]):
@@ -352,9 +357,10 @@ def handler_USER(msg):
 					last_modified_date = last_modified_date[0].decode('utf-8').replace("-".decode('utf-8'), ".").encode('utf-8')
 					n_msg = n_msg + file + " " + last_modified_date + " " + str(file_size) + " "
 
-					file = open(path, mode="r")
+					file = open(path, mode="rb")
 					content = read_file(path)
-					n_msg += content
+					n_msg += content +" "
+
 
 				n_msg += "\n"
 			else:
@@ -369,7 +375,7 @@ def handler_USER(msg):
 
 
 def read_file(file_path):
-	file = open(file_path, mode="r")
+	file = open(file_path, mode="rb")
 	content = file.read()
 	file.close()
 	return content
