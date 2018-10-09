@@ -38,7 +38,7 @@ elif len(sys.argv) != 1:
 	exit()
 
 HOST = socket.gethostbyname(HOST)
-server_address = (HOST, PORT)
+server_address = (HOST, int(PORT))
 
 
 def tcp_client(server_address, msg, authentication):
@@ -57,6 +57,7 @@ def tcp_client(server_address, msg, authentication):
 			print ("Error creating socket: %s" % e)
 			fd = None
 		try:
+			print (server_address)
 			fd.connect(server_address)
 		except socket.error, e:
 			print ("Error connecting to server address %s : %s" % (server_address, e))
@@ -64,7 +65,7 @@ def tcp_client(server_address, msg, authentication):
 
 	fd.settimeout(4)
 
-
+	data = ""
 	try:
 		fd.sendall(msg)
 	except socket.error, e:
