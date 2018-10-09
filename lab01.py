@@ -141,7 +141,7 @@ def authenticate_user_bool():
 
 def close_socket(fd):
 	try:
-		fd.close
+		fd.close()
 	except socket.error, e:
 		print ("Error closing socket: %s" % e)
 	return
