@@ -6,7 +6,7 @@ import datetime
 
 HOST = 'localhost'
 PORT = 58023
-BUFFER_SIZE = 80
+BUFFER_SIZE = 500
 
 USER = None
 PASS = None
@@ -38,7 +38,7 @@ elif len(sys.argv) != 1:
 	exit()
 
 HOST = socket.gethostbyname(HOST)
-server_address = (HOST, int(PORT))
+server_address = (HOST, PORT)
 
 
 def tcp_client(server_address, msg, authentication):
@@ -53,11 +53,11 @@ def tcp_client(server_address, msg, authentication):
 	elif authentication == False:
 		try:
 			fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			fd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		except socket.error, e:
 			print ("Error creating socket: %s" % e)
 			fd = None
 		try:
-			print (server_address)
 			fd.connect(server_address)
 		except socket.error, e:
 			print ("Error connecting to server address %s : %s" % (server_address, e))
@@ -65,12 +65,12 @@ def tcp_client(server_address, msg, authentication):
 
 	fd.settimeout(4)
 
-	data = ""
+
 	try:
 		fd.sendall(msg)
 	except socket.error, e:
 		print ("Error sending message: '%s' : %s" % (msg, e))
-
+		print("sent %s" % msg)
 	try:
 		data = fd.recv(BUFFER_SIZE)
 		while(data[-1:] != "\n"):
@@ -88,6 +88,8 @@ def tcp_client(server_address, msg, authentication):
 def tcp_client_aut(server_address, msg):
 	try:
 		fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		fd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
 	except socket.error, e:
 		print ("Error creating socket: %s" % e)
 		fd = None
@@ -284,7 +286,10 @@ def main():
 							last_modified_date = last_modified_date[0].decode('utf-8').replace("-".decode('utf-8'), ".").encode('utf-8')
 							msg = msg + file + " " + last_modified_date + " " + str(file_size) + " "
 						msg += "\n"
+						print("Going to connect to CS")
+						print (msg)
 						data = tcp_client(server_address, msg, True)
+
 						if aut_failed(data):
 							break
 						if socket_timeout(data):
@@ -301,9 +306,6 @@ def main():
 						elif status[1] == "ERR":
 							print ("Request was not well formulated")
 							break
-						if len(status) != 4:
-							print ("Error in the response for backup request")
-							break
 						Bs_ip = status[1]
 						Bs_port = status[2]
 						nr_files = status[3]
@@ -313,7 +315,7 @@ def main():
 						else:
 							msg = "UPL " + bck_dir + " " + nr_files
 							file_names = ""
-							for i in range(4, len(status), 3):
+							for i in range(4, len(status)-3, 4):
 								msg += " " + status[i] + " " + status[i+1] + " " + status[i+2]
 								file_names += status[i] + "\n"
 								file_path = dir_path + "/" + status[i]
@@ -321,7 +323,7 @@ def main():
 								content = read_file(file_path)
 								msg += " " + content
 							msg += "\n"
-							data = tcp_client(server_address, msg, True)  ################ mudar server address para o do backup	--> data = tcp_client((Bs_ip, Bs_port), msg, True)
+							data = tcp_client((Bs_ip, Bs_port), msg, True)  ################ mudar server address para o do backup	--> data = tcp_client((Bs_ip, Bs_port), msg, True)
 							if aut_failed(data):
 								break
 							if socket_timeout(data):
@@ -374,7 +376,7 @@ def main():
 					Bs_ip = status[1]
 					Bs_port = status[2]
 					msg = "RSB" + " " + directory + "\n"
-					data = tcp_client(server_address, msg, True)  ################ mudar server address para o do backup	--> data = tcp_client((Bs_ip, Bs_port), msg, True)
+					data = tcp_client((Bs_ip, Bs_port), msg, True) 
 					if aut_failed(data):
 						break
 					if socket_timeout(data):
@@ -419,13 +421,6 @@ def main():
 						print(file_names)
 						break
 
-						#
-						#
-						#
-						#
-						#	
-						#
-						#
 				break
 			continue
 
