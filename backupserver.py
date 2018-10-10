@@ -22,8 +22,12 @@ CSPORT= int(args.CSport)
 
 IPBS = socket.gethostbyname(socket.gethostname())
 
+udp_connection = None
+bs_addr = ("", BSPORT)
+
 
 def tcp_thread():
+	udp_server_register()
 	while True:
 		tcp_server()
 	return
@@ -75,13 +79,13 @@ def tcp_server():
 
 def udp_thread():
 	s = udp_server_init()
+	global udp_connection
+	udp_connection = s
 	while(True):
 		udp_server(s)
 	return
 
-
-def udp_server_init():
-
+def udp_server_register():
 	ip_cs = socket.gethostbyname(CSNAME)
 
 	cs_addr =(ip_cs, CSPORT)
@@ -91,21 +95,40 @@ def udp_server_init():
 	except socket.error:
 		print 'Error creating socket [UDP]'
 		sys.exit()
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-	try:
-		s.bind(cs_addr)
-	except socket.error:
-		print 'Error binding socket to address[UDP]'
-		sys.exit()
 
 	msg = "REG " + str(IPBS) + " " + str(BSPORT) + "\n"
-	bytes = len(msg)
+	n_bytes = len(msg)
 	try:
 		bytes_sent = s.sendto(msg, cs_addr)
-		if bytes_sent != bytes or bytes_sent == -1:
+		print (cs_addr)
+		print(msg)
+		if bytes_sent != n_bytes or bytes_sent == -1:
 			print 'Error sending data[UDP]'
 	except socket.error:
 		print 'Error sending data[UDP]'
+
+	data, cs_address = s.recvfrom(BUFFER_SIZE)
+	print (data)
+	handler_CS(data)
+
+	s.close()
+
+
+def udp_server_init():
+
+	try:
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	except socket.error:
+		print 'Error creating socket [UDP]'
+		sys.exit()
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	try:
+		s.bind(bs_addr)
+	except socket.error:
+		print 'Error binding socket to address[UDP]'
+		sys.exit()
 
 	return s
 
@@ -119,13 +142,13 @@ def udp_server(s):
 		data,addr=s.recvfrom(BUFFER_SIZE)
 		if data==0:
 			return None
-		while data[-1] != "\n":
+		while data[-1:] != "\n":
 			data+= s.recvfrom(BUFFER_SIZE)
-		#print data
+		print (data)
 		msg = handler_CS(data)
 		bytes = len(msg)
 		try:
-			bytes_sent = s.sendto(msg, cs_addr)
+			bytes_sent = s.sendto(msg, addr)
 			if bytes_sent != bytes or bytes_sent == -1:
 				print 'Error sending data[UDP]'
 		except socket.error:
@@ -135,19 +158,73 @@ def udp_server(s):
 
 	return
 
+def udp_unregister():
+
+	ip_cs = socket.gethostbyname(CSNAME)
+
+	cs_addr =(ip_cs, CSPORT)
+
+	try:
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	except socket.error:
+		print 'Error creating socket [UDP]'
+		sys.exit()
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	try:
+		s.bind(bs_addr)
+	except socket.error:
+		print 'Error binding socket to address[UDP]'
+		sys.exit()
+
+	msg = "UNR " + IPBS + " " + str(BSPORT)
+	bytes = len(msg)
+	try:
+		bytes_sent = s.sendto(msg, cs_addr)
+		if bytes_sent != bytes or bytes_sent == -1:
+			print 'Error sending data[UDP]'
+	except socket.error:
+		print 'Error sending data[UDP]'
+	try:
+		data, addr=s.recvfrom(BUFFER_SIZE)
+		if data == 0:
+			return None
+		while data[-1] != "\n":
+			data+= s.recvfrom(BUFFER_SIZE)
+		msg = data.split(" ")
+		if msg[1] == "UAR":
+			if msg[2] == "OK\n":
+				s.close()
+				return "OK"
+			elif msg[2] == "NOK\n":
+				s.close()
+				return "NOK" 
+			else:
+				s.close()
+				return "ERR"
+		else:
+			s.close()
+			return "ERR"
+	except socket.error:
+		s.close()
+		return "ERR"
+
+	s.close()
+	return "ERR"
+
 
 def handler_CS(msg):
 	path="/BS/user"
 
 	msg = msg.split(" ")
+	n_msg = "ERR"
 
 	if msg[0]=="RGR":
-		if (msg[1]=="NOK" or msg[1]=="RGR ERR"):
-			sys.exit()
+		if (msg[1]=="NOK\n" or msg[1]=="ERR\n"):
+			os._exit(0)
 
 	elif msg[0]=="UAR":
-		if (msg[1]=="NOK" or msg[1]=="RGR ERR"):
-			sys.exit()
+		if (msg[1]=="NOK\n" or msg[1]=="ERR\n"):
+			os._exit(0)
 
 	elif msg[0]=="LSF":
 		if (len(msg)==3 and isinstance(int(msg[1]), int) and len(msg[1])==5 and msg[2].isalnum() and len(msg[2])==8):
@@ -166,36 +243,36 @@ def handler_CS(msg):
 					n_msg = n_msg + file + " " + last_modified_date + " " + str(file_size) + " "
 				n_msg += "\n"
 			else:
-				n_msg = "ERR"
+				n_msg = "ERR\n"
 		else:
-			n_msg = "ERR"
+			n_msg = "ERR\n"
 
 	elif msg[0]=="LSU":
 		try:
-			if (len(msg)==3 and isinstance(int(msg[1]), int) and len(msg[1])==5 and msg[2].isalnum() and len(msg[2])==8):
+			if (len(msg)==3):
 				if is_user(msg[1], msg[2]):
-					n_msg = "LUR NOK"
+					n_msg = "LUR NOK\n"
 				else:
 					add_user_bs(msg[1], msg[2])
-					n_msg = "LUR OK"
-					print "New user: %d", msg[1]
+					n_msg = "LUR OK\n"
+					print ("New user: %s" % msg[1])
 			else:
-				n_msg="LUR ERR"
+				n_msg="LUR ERR\n"
 		except ValueError:
-			n_msg="LUR ERR"
+			n_msg="LUR ERR\n"
 
 	elif msg[0]=="DLB":
 		if (len(msg)==3 and isinstance(int(msg[1]), int) and len(msg[1])==5):
 			if find_dir(msg[1],msg[2]):
 				remove_dir(msg[1], msg[2])
-				n_msg = "DBR OK"
+				n_msg = "DBR OK\n"
 			else:
-				n_msg = "DBR NOK"
+				n_msg = "DBR NOK\n"
 		else:
-			n_msg = "DBR ERR"
+			n_msg = "DBR ERR\n"
 
 	else:
-		n_msg="ERR"
+		n_msg="ERR\n"
 
 	return n_msg
 
@@ -222,7 +299,8 @@ def add_user_bs(id, p):
 	file=open(path + ".txt", "w")
 	file.write(p)
 	file.close()
-	os.mkdir(path)
+	if not os.path.exists(path):
+		os.mkdir(path)
 	return
 
 def handler_USER(msg):
@@ -256,17 +334,9 @@ def handler_USER(msg):
 			data = data[bite:]
 		print("Successful restore")
 		print("Directory: %s" % directory)
-		print(file_names)
-		break		
+		print(file_names)		
 
 		###perceber
-
-'''
-		if transfer(msg[1], msg[2], msg[3]):
-			n_msg="UPR OK\n"
-		else:
-			n_msg="UPR NOK\n"
-'''
 	elif msg[0]=="RSB":
 		if (len(msg)==2 and isinstance(msg[1], str)):
 			if find_dir(msg[1]):
@@ -289,12 +359,12 @@ def handler_USER(msg):
 
 				n_msg += "\n"
 			else:
-				n_msg="RBR EOF"
+				n_msg="RBR EOF\n"
 		else:
-			n_msg="RBR ERR"
+			n_msg="RBR ERR\n"
 
 	else:
-		n_msg="ERR"
+		n_msg="ERR\n"
 
 	return n_msg
 
@@ -312,9 +382,14 @@ def find_dir(user, dir):
 	return os.path.isdir("/user_" + user + "/" + dir)
 
 def signal_handler(sig, frame):
-	###
-	print("\n")
-	sys.exit(0)
+	msg = udp_unregister()
+	if msg == "OK":
+		print("\n")
+		sys.exit(0)
+	elif msg =="NOK":
+		signal.signal(signal.SIGINT, signal_handler)
+		return
+
 
 def main():
 	t1 = Thread(target=udp_thread)
