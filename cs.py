@@ -70,20 +70,25 @@ def udp_receive(connection):
 	'''udp_receive : connection -> string
 	:: recebe um argumento do tipo connection e recebe uma mensagem atraves
 	de uma ligacao udp e devolve-a'''
-	msg = connection.recvfrom(BUFFER_SIZE)
-	if msg == 0:
+	print "vou receber"
+	msg, bs_address = connection.recvfrom(BUFFER_SIZE)
+	print "recebi"
+	print msg
+	'''if msg == "":
 		return None
-	while msg[-1] != "\n":
-		msg += connection.recvfrom(BUFFER_SIZE)
+	while msg[-1:] != "\n":
+		msg, bs_address += connection.recvfrom(BUFFER_SIZE)'''
 	return msg
 
 def udp_send(connection, msg, address):
 	'''udp_send : connection x string x address -> {}
 	:: envia uma mensagem atraves de uma ligacao udp'''
-	total = utf8len(msg)
-	sent = 0
+	total = len(msg.encode())
+	sent = connection.sendto(msg, address)
+	print sent
 	while sent < total:
 		sent += connection.sendto(msg, address)
+		print "merda"
 
 def tcp_send(connection, msg):
 	total = utf8len(msg)
@@ -173,7 +178,7 @@ def handle_bs(connection, msg):
 		reply += "RGR "
 		ip_bs = data_list[1]
 		port_bs = data_list[2]
-		bs_address = (ip_bs, port_bs)
+		bs_address = (ip_bs, int(port_bs))
 		if len(data_list) != 3:
 			print "Protocol (syntax) error"
 			reply += "ERR\n"
@@ -399,22 +404,27 @@ def handle_user(connection, aut):
 
 def user_tcp():
 	while True:
-		print "Start"
+		print "Start tcp"
 		c = tcp_init()
-		print "Init check"
+		print "Init check tcp"
 		msg = tcp_receive(c)
-		print "Receive check"
+		print "Receive check tcp"
 		handle_user(c, msg)
-		print "Handle check"
+		print "Handle check tcp"
 		tcp_terminate(c)
-		print "Terminate check"
+		print "Terminate check tcp"
 	
 
 def bs_udp():
+	print "Start udp"
 	c = udp_server_init()
+	print "Init check udp"
 	while True:
+		print "start while udp"
 		msg = udp_receive(c)
+		print "Receive check udp"
 		handle_bs(c, msg)
+		print "Handle check udp"
 
 def main():
 	print HOST
