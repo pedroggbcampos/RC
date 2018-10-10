@@ -17,12 +17,6 @@ HOME = os.getcwd()
 
 cs_address = (HOST, CSPORT)
 
-def utf8len(string):
-	'''utf8len : string -> int
-	:: recebe um argumento do tipo string e devolve o tamanho
-	dessa string em bytes'''
-	return len(string.encode('utf-8'))
-
 def empty_dir(path):
 	'''empty_dir : string -> logico
 	:: recebe um argumento do tipo string que representa o path para uma
@@ -91,7 +85,7 @@ def udp_send(connection, msg, address):
 		print "merda"
 
 def tcp_send(connection, msg):
-	total = utf8len(msg)
+	total = len(msg.encode())
 	sent = 0
 	while sent < total:
 		sent += connection.send(msg)
@@ -117,11 +111,17 @@ def get_available_bs():
 	f.close()
 	if bs != "":
 		bs_info = bs.split()
-		ip_bs = bs_info[0]
-		port_bs = bs_info[1]
-		return (ip_bs, port_bs)
+		return bs_info
 	else:
 		return None
+
+def register_in_bs(user, bs):
+	path = HOME + "/" + "user_" + user
+	os.chdir(path)
+	f = open("bss.txt", "a")
+	f.write(bs)
+	f.close()
+	os.chdir(HOME)
 
 def registered_in_bs(user, bs):
 	path = HOME + "/" + "user_" + user
@@ -134,14 +134,6 @@ def registered_in_bs(user, bs):
 			return True
 	os.chdir(HOME)
 	return False
-
-def register_in_bs(user, bs):
-	path = HOME + "/" + "user_" + user
-	os.chdir(path)
-	f = open("bss.txt", "a")
-	f.write(bs)
-	f.close()
-	os.chdir(HOME)
 
 '''def check_protocol(command, list):
 	args = len(list)
@@ -167,24 +159,25 @@ def register_in_bs(user, bs):
 
 	elif command == "LUR":
 
-	elif command == "DBR":'''		
+	elif command == "DBR":'''
 
-def handle_bs(connection, msg):
-	data_list = msg.split()
-	command = data_list[0]
-	reply = ""
-
-	if command == "REG": #completo
-		reply += "RGR "
-		ip_bs = data_list[1]
-		port_bs = data_list[2]
-		bs_address = (ip_bs, int(port_bs))
-		if len(data_list) != 3:
+'''if len(data_list) != 3:
 			print "Protocol (syntax) error"
 			reply += "ERR\n"
 			udp_send(connection, reply, bs_address)
-			return
-		bs = ip_bs + " " + port_bs + "\n"
+			return'''
+
+def handle_bs(connection, msg):
+	reply = ""
+	data_list = msg.split()
+	command = data_list[0]
+	ip_bs = data_list[1]
+	port_bs = data_list[2]
+	bs_address = (ip_bs, int(port_bs))
+	bs = ip_bs + " " + port_bs + "\n"
+
+	if command == "REG": #completo
+		reply += "RGR "
 		try:
 			f = open("bs_list.txt", "a")
 			f.write(bs)
@@ -199,20 +192,11 @@ def handle_bs(connection, msg):
 
 	elif command == "UNR": #incompleto
 		reply += "UAR "
-		ip_bs = data_list[1]
-		port_bs = data_list[2]
-		bs_address = (ip_bs, port_bs)
-		if len(data_list) != 3:
-			print "Protocol (syntax) error"
-			reply += "ERR\n"
-			udp_send(connection, reply, bs_address)
-			return
-		bs = ip_bs + " " + port_bs + "\n"
 		try:
 			f = open("bs_list.txt", "r")
 			bs_list = f.readlines()
 			f.close()
-			f = open("bs_list", "w")
+			f = open("bs_list.txt", "w")
 			for line in bs_list:
 				if line != bs:
 					f.write(line)
@@ -282,8 +266,8 @@ def handle_user(connection, aut):
 
 		elif command == "BCK": #incompleto
 			reply += "BKR "
-			bs_address = get_available_bs()
-			if bs_address == None:
+			bs_info = get_available_bs()
+			if bs_info == None:
 				print "No BS available"
 				reply += " EOF\n"
 				tcp_send(connection, reply)
@@ -291,10 +275,12 @@ def handle_user(connection, aut):
 				user_dir = data_list[1]
 				n = data_list[2]
 				files = data_list[3:]
-				ip_bs = bs_address[0]
-				port_bs = bs_address[1]
+				ip_bs = bs_info[0]
+				port_bs = bs_info[1]
+				bs_address = (ip_bs, int(port_bs))
 				reply += ip_bs + " " + port_bs
-				if registered_in_bs(user, str(bs_address)):
+				test_bs = ip_bs + " " + port_bs + "\n"
+				if registered_in_bs(user, test_bs):
 					msg = "LSF " + user + " " + user_dir + "\n"
 					c = udp_client_init(bs_address)
 					udp_send(c, msg, bs_address)
@@ -311,7 +297,7 @@ def handle_user(connection, aut):
 						reply += "\n"
 					tcp_send(connection, reply)
 				else:
-					register_in_bs(user, str(bs_address))
+					register_in_bs(user, test_bs)
 					msg = "LSU " + user + " " + password + "\n"
 					c = udp_client_init(bs_address)
 					udp_send(c, msg, bs_address)
@@ -358,7 +344,7 @@ def handle_user(connection, aut):
 			bs_info = get_bs_address(user, user_dir)
 			ip_bs = bs_info[0]
 			port_bs = bs_info[1]
-			bs_address = (ip_bs, port_bs)
+			bs_address = (ip_bs, int(port_bs))
 			c = udp_client_init(bs_address)
 			msg += user + " " + user_dir
 			udp_send(c, msg, bs_address)
@@ -382,7 +368,7 @@ def handle_user(connection, aut):
 			bs_info = get_bs_address(user, user_dir)
 			ip_bs = bs_info[0]
 			port_bs = bs_info[1]
-			bs_address = (ip_bs, port_bs)
+			bs_address = (ip_bs, int(port_bs))
 			c = udp_client_init(bs_address)
 			msg += user + " " + user_dir + "\n"
 			udp_send(c, msg, bs_address)
