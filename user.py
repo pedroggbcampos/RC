@@ -4,7 +4,7 @@ import sys
 import os
 import datetime
 
-HOST = ''
+HOST = socket.gethostname()
 PORT = 58023
 BUFFER_SIZE = 500
 
