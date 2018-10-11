@@ -20,6 +20,7 @@ BSPORT= int(args.BSport)
 CSNAME= str(args.CSname)
 CSPORT= int(args.CSport)
 
+#BSPORT = socket.getsockname()[1]
 IPBS = socket.gethostbyname(socket.gethostname())
 
 udp_connection = None
@@ -27,7 +28,6 @@ bs_addr = ("", BSPORT)
 
 
 def tcp_thread():
-	udp_server_register()
 	while True:
 		tcp_server()
 	return
@@ -109,7 +109,7 @@ def udp_server_register():
 	except socket.error:
 		print 'Error sending data[UDP]'
 
-	data, cs_address = s.recvfrom(BUFFER_SIZE)
+	data, cs_addr = s.recvfrom(BUFFER_SIZE)
 	print (data)
 	handler_CS(data)
 
@@ -222,7 +222,7 @@ def handler_CS(msg):
 		if (msg[1]=="NOK\n" or msg[1]=="ERR\n"):
 			os._exit(0)
 		elif(msg[1] == "OK\n"):
-			return
+			return ""
 
 	elif msg[0]=="UAR":
 		if (msg[1]=="NOK\n" or msg[1]=="ERR\n"):
@@ -394,6 +394,7 @@ def signal_handler(sig, frame):
 
 
 def main():
+	udp_server_register() 
 	t1 = Thread(target=udp_thread)
 	t2 = Thread(target=tcp_thread)
 	t1.daemon = True

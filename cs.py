@@ -41,6 +41,7 @@ def udp_server_init():
 	'''udp_server_init : {} -> connection
 	:: inicia uma ligacao udp (servidor) e devolve uma connection'''
 	c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	c.bind(cs_address)
 	return c
 
@@ -49,6 +50,7 @@ def udp_client_init(address):
 	:: recebe um argumento do tipo address, inicia uma ligacao udp (cliente)
 	e devolve uma connection'''
 	c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	c.bind(address)
 	return c
 
@@ -73,13 +75,13 @@ def udp_receive(connection):
 	de uma ligacao udp e devolve-a'''
 	print "vou receber"
 	msg, bs_address = connection.recvfrom(BUFFER_SIZE)
-	print "recebi"
+	print bs_address
 	print msg
 	'''if msg == "":
 		return None
 	while msg[-1:] != "\n":
 		msg, bs_address += connection.recvfrom(BUFFER_SIZE)'''
-	return msg
+	return (msg, bs_address)
 
 def udp_send(connection, msg, address):
 	'''udp_send : connection x string x address -> {}
@@ -87,9 +89,9 @@ def udp_send(connection, msg, address):
 	total = len(msg.encode())
 	sent = connection.sendto(msg, address)
 	print sent
-	while sent < total:
+	while sent != total:
 		sent += connection.sendto(msg, address)
-		print "merda"
+	print "merda"
 
 def tcp_send(connection, msg):
 	'''tcp_send : connection x string -> {}
@@ -199,13 +201,13 @@ def check_protocol(command, args):
 		return n_args == 2
 	return False
 
-def handle_bs(connection, msg):
+def handle_bs(connection, msg, bs_address):
 	reply = ""
 	data_list = msg.split()
 	command = data_list[0]
 	ip_bs = data_list[1]
 	port_bs = data_list[2]
-	bs_address = (ip_bs, int(port_bs))
+	#bs_address = (ip_bs, int(port_bs))
 	bs = ip_bs + " " + port_bs + "\n"
 
 	if command == "REG": #completo
@@ -221,7 +223,7 @@ def handle_bs(connection, msg):
 			except IOError as e:
 				print ("Error registering BS: %s" % e)
 				reply += "NOK\n"
-				udp_send(connection, reply, bs_address)
+
 			print "+BS: " + ip_bs + " " + port_bs
 			reply += "OK\n"
 
@@ -243,11 +245,12 @@ def handle_bs(connection, msg):
 			except IOError as e:
 				print ("Error deregistering BS: %s" % e)
 				reply += "NOK\n"
-				udp_send(connection, reply, bs_address)
 			print "-BS: " + ip_bs + " " + port_bs
 			reply += "OK\n"
-
+	print bs_address
+	print reply
 	udp_send(connection, reply, bs_address)
+	print "mandei"
 
 def handle_user(connection, aut):
 	aut_list = aut.split()
@@ -256,7 +259,7 @@ def handle_user(connection, aut):
 
 	if aut_command == "AUT": #completo
 		reply += "AUR "
-		if not check_protocol(aut_command, data_list):
+		if not check_protocol(aut_command, aut_list):
 			print "Protocol (syntax) error"
 			reply += "ERR\n"
 		else:
@@ -281,6 +284,8 @@ def handle_user(connection, aut):
 				f.write(password)
 				f.close()
 				os.mkdir(dirname)
+				f=open(dirname+"/"+"bss.txt", "w")
+				f.close()
 				print "New user: %s" % user
 				reply += "NEW\n"
 				tcp_send(connection, reply)
@@ -335,7 +340,7 @@ def handle_user(connection, aut):
 						msg = "LSF " + user + " " + user_dir + "\n"
 						c = udp_client_init(bs_address)
 						udp_send(c, msg, bs_address)
-						bs_msg = udp_receive(c)
+						bs_msg, bs_aux_addr = udp_receive(c)
 						udp_terminate(c)
 						bs_msg_list = bs_msg.split()
 						response = bs_msg_list[0]
@@ -352,7 +357,7 @@ def handle_user(connection, aut):
 						msg = "LSU " + user + " " + password + "\n"
 						c = udp_client_init(bs_address)
 						udp_send(c, msg, bs_address)
-						bs_msg = udp_receive(c)
+						bs_msg, bs_aux_addr = udp_receive(c)
 						udp_terminate(c)
 						bs_msg_list = bs_msg.split()
 						response = bs_msg_list[0]
@@ -407,7 +412,7 @@ def handle_user(connection, aut):
 				c = udp_client_init(bs_address)
 				msg += user + " " + user_dir
 				udp_send(c, msg, bs_address)
-				bs_msg = udp_receive(c)
+				bs_msg, bs_aux_addr = udp_receive(c)
 				udp_terminate(c)
 				bs_msg_list = bs_msg.split()
 				response = bs_msg_list[0]
@@ -434,7 +439,7 @@ def handle_user(connection, aut):
 				c = udp_client_init(bs_address)
 				msg += user + " " + user_dir + "\n"
 				udp_send(c, msg, bs_address)
-				bs_msg = udp_receive(c)
+				bs_msg, bs_aux_addr = udp_receive(c)
 				udp_terminate(c)
 				bs_msg_list = bs_msg.split()
 				response = bs_msg_list[0]
@@ -470,9 +475,9 @@ def bs_udp():
 	print "Init check udp"
 	while True:
 		print "start while udp"
-		msg = udp_receive(c)
+		msg, bs_address = udp_receive(c)
 		print "Receive check udp"
-		handle_bs(c, msg)
+		handle_bs(c, msg, bs_address)
 		print "Handle check udp"
 
 def main():
