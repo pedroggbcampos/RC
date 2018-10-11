@@ -11,7 +11,7 @@ BUFFER_SIZE=80
 
 parser= argparse.ArgumentParser(description='Process invoking command.')
 parser.add_argument('-b', '--BSport', default=59000, type=int, required=False, help='port where the BS server accepts requests')
-parser.add_argument('-n', '--CSname', default='localhost', type=str, required=False, help='name of the machine where the CS runs')
+parser.add_argument('-n', '--CSname', default=socket.gethostname(), type=str, required=False, help='name of the machine where the CS runs')
 parser.add_argument('-p', '--CSport', default=58023, type=int, required=False, help='port where the CS server accepts requests')
 
 args = parser.parse_args()
@@ -221,6 +221,8 @@ def handler_CS(msg):
 	if msg[0]=="RGR":
 		if (msg[1]=="NOK\n" or msg[1]=="ERR\n"):
 			os._exit(0)
+		elif(msg[1] == "OK\n"):
+			return
 
 	elif msg[0]=="UAR":
 		if (msg[1]=="NOK\n" or msg[1]=="ERR\n"):
