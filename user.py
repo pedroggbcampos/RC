@@ -4,7 +4,7 @@ import sys
 import os
 import datetime
 
-HOST = 'localhost'
+HOST = ''
 PORT = 58023
 BUFFER_SIZE = 500
 
@@ -32,23 +32,72 @@ elif len(sys.argv) == 5:
 		PORT = sys.argv[4]
 	else:
 		print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]")
-		exit()
+                exit()
 elif len(sys.argv) != 1:
 	print ("Could not run - Correct format is : ./user [-n CSname] [-p CSport]")
 	exit()
 
 HOST = socket.gethostbyname(HOST)
-server_address = (HOST, PORT)
-
-
+server_address = (HOST, int(PORT))
+print(socket.gethostname())
+print(socket.gethostbyname(socket.gethostname()))
 def tcp_client(server_address, msg, authentication):
-	if authentication == True:
-		(validation, fd) = authenticate_user_bool()
-		if not validation:
-			if fd != None:
-				close_socket(fd)
-			data = "NOK\n"
-			return data
+	data = ""
+        if authentication == True:
+                validation = False
+                if not logged_in_bool():
+		    print ("To execute any command you must login first: login [user] [password]")
+		    return "NOK\n"
+
+                message = "AUT" + " " + USER + " " + PASS + "\n" 
+
+                try:
+			fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			fd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		except socket.error, e:
+			print ("Error creating socket: %s" % e)
+			fd = None
+	        try:
+	                fd.connect(server_address)
+	        except socket.error, e:
+		        print ("Error connecting to server address %s : %s" % (server_address, e))
+	        	exit()
+                
+                fd.settimeout(4)
+
+                try:
+		    fd.sendall(message)
+	        except socket.error, e:
+		    print ("Error sending message: '%s' : %s" % (message, e))
+
+            	try:
+		    data = fd.recv(BUFFER_SIZE)
+	            print (data)
+	        except socket.timeout, i:
+		        data = "TMO\n"
+	        except socket.error, e:
+		        print ("Error receiving message: %s" % e)
+
+	        status = data.split(" ")   
+
+                if status[0] != "AUR":
+		    print ("Error authenticating. Operation cancelled")
+                    if fd != None:
+		        close_socket(fd)
+		    return "NOK\n"
+	        if status[1] == "OK\n":
+		    validation = True
+	        elif status[1] == "NOK\n":
+		    print("Authentication failed. Operation cancelled")
+                    if fd != None:
+		        close_socket(fd)
+		    return "NOK\n"
+	        else:
+		    print ("Error authenticating. Operation cancelled")
+                    if fd != None:
+		        close_socket(fd)
+		    return "NOK\n"
+	
 
 	elif authentication == False:
 		try:
@@ -57,15 +106,15 @@ def tcp_client(server_address, msg, authentication):
 		except socket.error, e:
 			print ("Error creating socket: %s" % e)
 			fd = None
-		try:
-			fd.connect(server_address)
-		except socket.error, e:
-			print ("Error connecting to server address %s : %s" % (server_address, e))
-			exit()
+	        try:
+	                fd.connect(server_address)
+	        except socket.error, e:
+		        print ("Error connecting to server address %s : %s" % (server_address, e))
+	        	exit()
 
-	fd.settimeout(4)
+	        fd.settimeout(4)
 
-
+        
 	try:
 		fd.sendall(msg)
 	except socket.error, e:
@@ -85,62 +134,6 @@ def tcp_client(server_address, msg, authentication):
 
 	return data
 
-def tcp_client_aut(server_address, msg):
-	try:
-		fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		fd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-	except socket.error, e:
-		print ("Error creating socket: %s" % e)
-		fd = None
-
-	fd.settimeout(4)
-
-	try:
-		fd.connect(server_address)
-	except socket.error, e:
-		print ("Error connecting to server address %s : %s" % (server_address, e))
-		exit()
-
-	try:
-		fd.sendall(msg)
-	except socket.error, e:
-		print ("Error sending message: '%s' : %s" % (msg, e))
-
-	try:
-		data = fd.recv(BUFFER_SIZE)
-		print (data)
-	except socket.timeout, i:
-		data = "TMO"
-	except socket.error, e:
-		print ("Error receiving message: %s" % e)
-
-	return (data, fd)
-
-def authenticate_user_bool():
-	validation = False
-	if not logged_in_bool():
-		print ("To execute any command you must login first: login [user] [password]")
-		fd = None
-		return (validation, fd)
-	msg = "AUT" + " " + USER + " " + PASS + "\n"
-	(data, fd)= tcp_client_aut(server_address, msg)
-	if socket_timeout(data):
-		print ("Error authenticating. Connection timeout. Operation cancelled")
-		return (validation, fd)
-	status = data.split(" ")
-	if status[0] != "AUR":
-		print ("Error authenticating. Operation cancelled")
-		return (validation, fd)
-	if status[1] == "OK\n":
-		validation = True
-		return (validation, fd)
-	elif status[1] == "NOK\n":
-		print("Authentication failed. Operation cancelled")
-		return (validation, fd)
-	else:
-		print ("Error authenticating. Operation cancelled")
-		return (validation, fd)
 
 def close_socket(fd):
 	try:
@@ -276,15 +269,16 @@ def main():
 						print ("Backup Error - There are no files in the directory provided")
 						break
 					else:
-						msg = "BCK " + bck_dir + " " + str(len(files)) + " "
+						msg = "BCK " + bck_dir + " " + str(len(files))
 						for file in files:
+                                                        msg += " "
 							mtime = os.path.getmtime(dir_path + "/" + file)
 							last_modified_date = datetime.datetime.fromtimestamp(mtime)
 							file_size = os.path.getsize(dir_path + "/" + file)
 							last_modified_date = str(last_modified_date)
 							last_modified_date = last_modified_date.split(".")
 							last_modified_date = last_modified_date[0].decode('utf-8').replace("-".decode('utf-8'), ".").encode('utf-8')
-							msg = msg + file + " " + last_modified_date + " " + str(file_size) + " "
+							msg = msg + file + " " + last_modified_date + " " + str(file_size)
 						msg += "\n"
 						print("Going to connect to CS")
 						print (msg)
@@ -300,10 +294,10 @@ def main():
 						if status[0] != "BKR":
 							print ("Error in the response for backup request")
 							break
-						if status[1] == "EOF":
+						if status[1] == "EOF\n":
 							print ("Could not complete restore request. No backup servers available")
 							break
-						elif status[1] == "ERR":
+                                                elif status[1] == "ERR\n":
 							print ("Request was not well formulated")
 							break
 						Bs_ip = status[1]
@@ -323,7 +317,8 @@ def main():
 								content = read_file(file_path)
 								msg += " " + content
 							msg += "\n"
-							data = tcp_client((Bs_ip, Bs_port), msg, True)  ################ mudar server address para o do backup	--> data = tcp_client((Bs_ip, Bs_port), msg, True)
+							print(msg)
+                                                        data = tcp_client((Bs_ip, int(Bs_port)), msg, True)  ################ mudar server address para o do backup	--> data = tcp_client((Bs_ip, Bs_port), msg, True)
 							if aut_failed(data):
 								break
 							if socket_timeout(data):
@@ -364,10 +359,10 @@ def main():
 					if status[0] != "RSR":
 						print ("Error in the response for restore request")
 						break
-					if status[1] == "EOF":
-						print ("Could not complete restore request. No backup servers available")
+					if status[1] == "EOF\n":
+						print ("Could not complete restore request. No backed up directorires or no backup servers available")
 						break
-					elif status[1] == "ERR":
+					elif status[1] == "ERR\n":
 						print ("Request was not well formulated")
 						break
 					if len(status) != 3:
@@ -376,7 +371,7 @@ def main():
 					Bs_ip = status[1]
 					Bs_port = status[2]
 					msg = "RSB" + " " + directory + "\n"
-					data = tcp_client((Bs_ip, Bs_port), msg, True) 
+					data = tcp_client((Bs_ip, int(Bs_port)), msg, True) 
 					if aut_failed(data):
 						break
 					if socket_timeout(data):
@@ -386,10 +381,10 @@ def main():
 					if status[0] != "RBR":
 						print ("Error in the response for restore request")
 						break
-					if status[1] == "EOF":
-						print ("Could not complete restore request. No backup servers available")
+					if status[1] == "EOF\n":
+						print ("Could not complete restore request.")
 						break
-					elif status[1] == "ERR":
+					elif status[1] == "ERR\n":
 						print ("Request was not well formulated")
 						break
 					if len(status) < 2:
@@ -430,7 +425,7 @@ def main():
 					print ("Invalid number of arguments - Correct command is : dirlist")
 					break
 				elif len(command) == 1:
-					msg = "LSD"
+					msg = "LSD\n"
 					data = tcp_client(server_address, msg, True)
 					if aut_failed(data):
 						break
@@ -441,7 +436,7 @@ def main():
 					if status[0] != "LDR":
 						print ("Error listing directories")
 						break
-					if status[1] == "0":
+                                        if status[1] == "0\n":
 						print ("No directories backed up")
 						break
 					else:
