@@ -27,12 +27,15 @@ def empty_dir(path):
 def tcp_init():
 	'''tcp_init : {} -> connection
 	:: inicia uma ligacao tcp (servidor) e devolve uma connection'''
-	s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s_tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	s_tcp.bind(cs_address)
-	s_tcp.listen(BACKLOG)
-	connection_tcp, client_address = s_tcp.accept()
-	return connection_tcp
+	try:
+		s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		s_tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		s_tcp.bind(cs_address)
+		s_tcp.listen(BACKLOG)
+		connection_tcp, client_address = s_tcp.accept()
+		return connection_tcp
+	except socket.error as e:
+		print("Erros initiating tcp connection: %s" % e)
 
 def udp_server_init():
 	'''udp_server_init : {} -> connection
@@ -53,13 +56,16 @@ def tcp_receive(connection):
 	'''tcp_receive : connection -> string
 	:: recebe um argumento do tipo connection e recebe uma mensagem atraves
 	de uma ligacao tcp e devolve-a'''
-	msg = connection.recv(BUFFER_SIZE)
-	if msg == "":
-		return None
-	while msg[-1:] != "\n":
-		msg += connection.recv(BUFFER_SIZE)
-	print msg
-	return msg
+	try:
+		msg = connection.recv(BUFFER_SIZE)
+		if msg == "":
+			return None
+		while msg[-1:] != "\n":
+			msg += connection.recv(BUFFER_SIZE)
+		print msg
+		return msg
+	except socket.error as e:
+		print("Error initiating tcp connection: %s" % e)
 
 def udp_receive(connection):
 	'''udp_receive : connection -> string
