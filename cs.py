@@ -9,6 +9,7 @@ parser.add_argument('-p', '--CSport', default=58023, type=int, required=False, h
 
 args = parser.parse_args()
 
+AUX = socket.gethostname()
 HOST = socket.gethostbyname(socket.gethostname())
 BUFFER_SIZE = 80
 BACKLOG = 1
@@ -85,18 +86,29 @@ def udp_send(connection, msg, address):
 		print "merda"
 
 def tcp_send(connection, msg):
+	'''tcp_send : connection x string -> {}
+	:: recebe um argumento do tipo connection e uma string que representa a mensagem
+	a enviar e envia a mensagem atraves de uma ligacao tcp'''
 	total = len(msg.encode())
 	sent = 0
 	while sent < total:
 		sent += connection.send(msg)
 
 def udp_terminate(connection):
+	'''udp_terminate : connection -> {}
+	:: recebe um argumento do tipo connection e fecha-a'''
 	connection.close()
 
 def tcp_terminate(connection):
+	'''tcp_terminate : connection -> {}
+	:: recebe um argumento do tipo connection e fecha-a'''
 	connection.close()
 
 def get_bs_address(user, d):
+	'''get_bs_address : string x string -> list
+	:: recebe um argumento do tipo string que representa um utilizador, uma string que
+	representa uma diretoria e devolve uma lista com o ip e o porto do servidor BS que
+	guardou essa diretoria'''
 	path = HOME + "/user_" + user + "/" + d
 	os.chdir(path)
 	f = open("ip_port.txt", "r")
@@ -106,6 +118,9 @@ def get_bs_address(user, d):
 	return line_info
 
 def get_available_bs():
+	'''get_available_bs : {} -> list
+	:: consulta a lista de BS's registados caso haja um disponivel devolve uma lista com
+	o seu ip e porto, caso contrario devolve None'''
 	f = open("bs_list.txt", "r")
 	bs = f.readline()
 	f.close()
@@ -116,6 +131,10 @@ def get_available_bs():
 		return None
 
 def register_in_bs(user, bs):
+	'''register_in_bs : string x string -> {}
+	:: recebe um argumento do tipo string que representa um utilizador e uma string que
+	representa um servidor BS e regista esse BS no ficheiro de servidores BS onde esse
+	utilizador esta registado'''
 	path = HOME + "/" + "user_" + user
 	os.chdir(path)
 	f = open("bss.txt", "a")
@@ -124,6 +143,10 @@ def register_in_bs(user, bs):
 	os.chdir(HOME)
 
 def registered_in_bs(user, bs):
+	'''registered_in_bs : string x string -> logico
+	:: recebe um argumento do tipo string que representa um utilizador e uma string que
+	representa um servidor BS e devolve True caso esse utilizador ja se tenha registado
+	nesse servidor BS'''
 	path = HOME + "/" + "user_" + user
 	os.chdir(path)
 	f = open("bss.txt", "r")
@@ -135,37 +158,40 @@ def registered_in_bs(user, bs):
 	os.chdir(HOME)
 	return False
 
-'''def check_protocol(command, list):
-	args = len(list)
+def check_protocol(command, args):
+	'''check_protocol : string x list -> logico
+	:: recebe um argumento do tipo string que representa o tipo de mensagem recebida e uma
+	lista com os restantes argumentos da mensagem, devolve True caso a mensagem esteja de
+	acordo com o protocolo e False caso contrario'''
+	n_args = len(args)
+	print "vou verificar uma mensagem com len " + str(n_args)
 	if command == "AUT":
-		return args == 3
+		return n_args == 3
 	elif command == "DLU":
-		return args = 1
+		return n_args == 1
 	elif command == "BCK":
-
+		n = int(args[2])
+		return n_args == (3+n*4)
 	elif command == "RST":
-
+		return n_args == 2
 	elif command == "LSD":
-
+		return n_args == 1
 	elif command == "LSF":
-
+		return n_args == 2
 	elif command == "DEL":
-
+		return n_args == 2
 	elif command == "REG":
-
+		return n_args == 3
 	elif command == "UNR":
-
+		return n_args == 3
 	elif command == "LFD":
-
+		n = int(args[1])
+		return n_args == (2+n*4)
 	elif command == "LUR":
-
-	elif command == "DBR":'''
-
-'''if len(data_list) != 3:
-			print "Protocol (syntax) error"
-			reply += "ERR\n"
-			udp_send(connection, reply, bs_address)
-			return'''
+		return n_args == 2
+	elif command == "DBR":
+		return n_args == 2
+	return False
 
 def handle_bs(connection, msg):
 	reply = ""
@@ -178,36 +204,44 @@ def handle_bs(connection, msg):
 
 	if command == "REG": #completo
 		reply += "RGR "
-		try:
-			f = open("bs_list.txt", "a")
-			f.write(bs)
-			f.close()
-		except IOError as e:
-			print ("Error registering BS: %s" % e)
-			reply += "NOK\n"
-			udp_send(connection, reply, bs_address)
-		print "+BS: " + ip_bs + " " + port_bs
-		reply += "OK\n"
-		udp_send(connection, reply, bs_address)
+		if not check_protocol(command, data_list):
+			print "Protocol (syntax) error"
+			reply += "ERR\n"
+		else:
+			try:
+				f = open("bs_list.txt", "a")
+				f.write(bs)
+				f.close()
+			except IOError as e:
+				print ("Error registering BS: %s" % e)
+				reply += "NOK\n"
+				udp_send(connection, reply, bs_address)
+			print "+BS: " + ip_bs + " " + port_bs
+			reply += "OK\n"
 
 	elif command == "UNR": #incompleto
 		reply += "UAR "
-		try:
-			f = open("bs_list.txt", "r")
-			bs_list = f.readlines()
-			f.close()
-			f = open("bs_list.txt", "w")
-			for line in bs_list:
-				if line != bs:
-					f.write(line)
-			f.close()
-		except IOError as e:
-			print ("Error deregistering BS: %s" % e)
-			reply += "NOK\n"
-			udp_send(connection, reply, bs_address)
-		print "-BS: " + ip_bs + " " + port_bs
-		reply += "OK\n"
-		udp_send(connection, reply, bs_address)
+		if not check_protocol(command, data_list):
+			print "Protocol (syntax) error"
+			reply += "ERR\n"
+		else:
+			try:
+				f = open("bs_list.txt", "r")
+				bs_list = f.readlines()
+				f.close()
+				f = open("bs_list.txt", "w")
+				for line in bs_list:
+					if line != bs:
+						f.write(line)
+				f.close()
+			except IOError as e:
+				print ("Error deregistering BS: %s" % e)
+				reply += "NOK\n"
+				udp_send(connection, reply, bs_address)
+			print "-BS: " + ip_bs + " " + port_bs
+			reply += "OK\n"
+
+	udp_send(connection, reply, bs_address)
 
 def handle_user(connection, aut):
 	aut_list = aut.split()
@@ -216,31 +250,36 @@ def handle_user(connection, aut):
 
 	if aut_command == "AUT": #completo
 		reply += "AUR "
-		user = aut_list[1]
-		password = aut_list[2]
-		dirname = "user_" + user
-		filename = dirname + ".txt"
-		if os.path.exists(filename):
-			f = open(filename, "r")
-			data = f.read()
-			f.close()
-			if data == password:
-				print "User: %s" % user
-				reply += "OK\n"
+		if not check_protocol(aut_command, data_list):
+			print "Protocol (syntax) error"
+			reply += "ERR\n"
+		else:
+			user = aut_list[1]
+			password = aut_list[2]
+			dirname = "user_" + user
+			filename = dirname + ".txt"
+			if os.path.exists(filename):
+				f = open(filename, "r")
+				data = f.read()
+				f.close()
+				if data == password:
+					print "User: %s" % user
+					reply += "OK\n"
+				else:
+					print "User entered wrong password: %s" % user
+					reply += "NOK\n"
+					tcp_send(connection, reply)
+					return
 			else:
-				print "User entered wrong password: %s" % user
-				reply += "NOK\n"
+				f = open(filename, "w")
+				f.write(password)
+				f.close()
+				os.mkdir(dirname)
+				print "New user: %s" % user
+				reply += "NEW\n"
 				tcp_send(connection, reply)
 				return
-		else:
-			f = open(filename, "w")
-			f.write(password)
-			f.close()
-			os.mkdir(dirname)
-			print "New user: %s" % user
-			reply += "NEW\n"
-			tcp_send(connection, reply)
-			return
+
 		tcp_send(connection, reply)
 
 	msg = tcp_receive(connection)
@@ -252,139 +291,157 @@ def handle_user(connection, aut):
 
 		if command == "DLU": #completo
 			reply += "DLR "
-			path = HOME + "/" + dirname
-			if empty_dir(path):
-				os.rmdir(dirname)
-				os.remove(filename)
-				print "User deleted: %s" % user
-				reply += "OK\n"
-				tcp_send(connection, reply)
+			if not check_protocol(command, data_list):
+				print "Protocol (syntax) error"
+				reply += "ERR\n"
 			else:
-				print "Failed to delete user: %s" % user
-				reply += "NOK\n"
-				tcp_send(connection, reply)
+				path = HOME + "/" + dirname
+				if empty_dir(path):
+					os.rmdir(dirname)
+					os.remove(filename)
+					print "User deleted: %s" % user
+					reply += "OK\n"
+				else:
+					print "Failed to delete user: %s" % user
+					reply += "NOK\n"
 
 		elif command == "BCK": #incompleto
 			reply += "BKR "
-			bs_info = get_available_bs()
-			if bs_info == None:
-				print "No BS available"
-				reply += " EOF\n"
-				tcp_send(connection, reply)
+			if not check_protocol(command, data_list):
+				print "Protocol (syntax) error"
+				reply += "ERR\n"
 			else:
-				user_dir = data_list[1]
-				n = data_list[2]
-				files = data_list[3:]
-				ip_bs = bs_info[0]
-				port_bs = bs_info[1]
-				bs_address = (ip_bs, int(port_bs))
-				reply += ip_bs + " " + port_bs
-				test_bs = ip_bs + " " + port_bs + "\n"
-				if registered_in_bs(user, test_bs):
-					msg = "LSF " + user + " " + user_dir + "\n"
-					c = udp_client_init(bs_address)
-					udp_send(c, msg, bs_address)
-					bs_msg = udp_receive(c)
-					udp_terminate(c)
-					bs_msg_list = bs_msg.split()
-					response = bs_msg_list[0]
-					n = bs_msg_list[1]
-					bs_files = bs_msg_list[2:]
-					if response == "LFD":
-						reply += " " + n
-						for i in bs_files:
-							reply += " " + i
-						reply += "\n"
+				bs_info = get_available_bs()
+				if bs_info == None:
+					print "No BS available"
+					reply += " EOF\n"
 					tcp_send(connection, reply)
 				else:
-					register_in_bs(user, test_bs)
-					msg = "LSU " + user + " " + password + "\n"
-					c = udp_client_init(bs_address)
-					udp_send(c, msg, bs_address)
-					bs_msg = udp_receive(c)
-					udp_terminate(c)
-					bs_msg_list = bs_msg.split()
-					response = bs_msg_list[0]
-					status = bs_msg_list[1]
-					if response == "LUR":
-						if status == "OK":
-							reply += "OK\n"
-						elif status == "NOK":
-							reply += "NOK\n"
-						elif status == "ERR":
-							reply += "ERR\n"
-					tcp_send(connection, reply)
+					user_dir = data_list[1]
+					n = data_list[2]
+					files = data_list[3:]
+					ip_bs = bs_info[0]
+					port_bs = bs_info[1]
+					bs_address = (ip_bs, int(port_bs))
+					reply += ip_bs + " " + port_bs
+					test_bs = ip_bs + " " + port_bs + "\n"
+					if registered_in_bs(user, test_bs):
+						msg = "LSF " + user + " " + user_dir + "\n"
+						c = udp_client_init(bs_address)
+						udp_send(c, msg, bs_address)
+						bs_msg = udp_receive(c)
+						udp_terminate(c)
+						bs_msg_list = bs_msg.split()
+						response = bs_msg_list[0]
+						n = bs_msg_list[1]
+						bs_files = bs_msg_list[2:]
+						if response == "LFD":
+							reply += " " + n
+							for i in bs_files:
+								reply += " " + i
+							reply += "\n"
+						tcp_send(connection, reply)
+					else:
+						register_in_bs(user, test_bs)
+						msg = "LSU " + user + " " + password + "\n"
+						c = udp_client_init(bs_address)
+						udp_send(c, msg, bs_address)
+						bs_msg = udp_receive(c)
+						udp_terminate(c)
+						bs_msg_list = bs_msg.split()
+						response = bs_msg_list[0]
+						status = bs_msg_list[1]
+						if response == "LUR":
+							if status == "OK":
+								reply += "OK\n"
+							elif status == "NOK":
+								reply += "NOK\n"
+							elif status == "ERR":
+								reply += "ERR\n"
 
 		elif command == "RST": #completo
 			reply += "RSR "
-			rst_dir = data_list[1]
-			bs_info = get_bs_address(user, rst_dir)
-			ip_bs = bs_info[0]
-			port_bs = bs_info[1]
-			reply += ip_bs + " " + port_bs
-			tcp_send(connection, reply)
+			if not check_protocol(command, data_list):
+				print "Protocol (syntax) error"
+				reply += "ERR\n"
+			else:
+				rst_dir = data_list[1]
+				bs_info = get_bs_address(user, rst_dir)
+				ip_bs = bs_info[0]
+				port_bs = bs_info[1]
+				reply += ip_bs + " " + port_bs
 
 		elif command == "LSD": #completo
-			print "List request"
 			reply += "LDR "
-			path = HOME + "/" + dirname
-			dirs = os.listdir(path)
-			n = len(dirs)
-			reply += n 
-			for d in dirs:
-				reply += " " + d
-			reply += "\n"
-			tcp_send(connection, reply)
+			if not check_protocol(command, data_list):
+				print "Protocol (syntax) error"
+				reply += "ERR\n"
+			else:
+				path = HOME + "/" + dirname
+				dirs = os.listdir(path)
+				n = len(dirs)
+				reply += str(n) 
+				for d in dirs:
+					reply += " " + d
+				reply += "\n"
 
 		elif command == "LSF": #incompleto
 			reply += "LFD"
-			user_dir = data_list[1]
-			msg = "DLB "
-			user_dir = data_list[1]
-			bs_info = get_bs_address(user, user_dir)
-			ip_bs = bs_info[0]
-			port_bs = bs_info[1]
-			bs_address = (ip_bs, int(port_bs))
-			c = udp_client_init(bs_address)
-			msg += user + " " + user_dir
-			udp_send(c, msg, bs_address)
-			bs_msg = udp_receive(c)
-			udp_terminate(c)
-			bs_msg_list = bs_msg.split()
-			response = bs_msg_list[0]
-			if response == "LFD":
-				reply_list = [n]
-				bs_msg_list[2:]
-				reply_list += bs_msg_list
-				for i in reply_list:
-					reply += " " + i
-				reply += "\n"
-			tcp_send(connection, reply)
+			if not check_protocol(command, data_list):
+				print "Protocol (syntax) error"
+				reply += " ERR\n"
+			else:
+				user_dir = data_list[1]
+				msg = "DLB "
+				user_dir = data_list[1]
+				bs_info = get_bs_address(user, user_dir)
+				ip_bs = bs_info[0]
+				port_bs = bs_info[1]
+				bs_address = (ip_bs, int(port_bs))
+				c = udp_client_init(bs_address)
+				msg += user + " " + user_dir
+				udp_send(c, msg, bs_address)
+				bs_msg = udp_receive(c)
+				udp_terminate(c)
+				bs_msg_list = bs_msg.split()
+				response = bs_msg_list[0]
+				if response == "LFD":
+					reply_list = [n]
+					bs_msg_list[2:]
+					reply_list += bs_msg_list
+					for i in reply_list:
+						reply += " " + i
+					reply += "\n"
 
 		elif command == "DEL": #incompleto
 			reply += "DDR "
-			msg = "DLB "
-			user_dir = data_list[1]
-			bs_info = get_bs_address(user, user_dir)
-			ip_bs = bs_info[0]
-			port_bs = bs_info[1]
-			bs_address = (ip_bs, int(port_bs))
-			c = udp_client_init(bs_address)
-			msg += user + " " + user_dir + "\n"
-			udp_send(c, msg, bs_address)
-			bs_msg = udp_receive(c)
-			udp_terminate(c)
-			bs_msg_list = bs_msg.split()
-			response = bs_msg_list[0]
-			status = bs_msg_list[1]
-			if response == "DBR":
-				if status == "OK":
-					reply += "OK\n"
-				elif status == "NOK":
-					reply += "NOK\n"
-				elif status == "ERR":
-					reply += "ERR\n"
-			tcp_send(connection, reply)
+			if not check_protocol(command, data_list):
+				print "Protocol (syntax) error"
+				reply += "ERR\n"
+			else:
+				msg = "DLB "
+				user_dir = data_list[1]
+				bs_info = get_bs_address(user, user_dir)
+				ip_bs = bs_info[0]
+				port_bs = bs_info[1]
+				bs_address = (ip_bs, int(port_bs))
+				c = udp_client_init(bs_address)
+				msg += user + " " + user_dir + "\n"
+				udp_send(c, msg, bs_address)
+				bs_msg = udp_receive(c)
+				udp_terminate(c)
+				bs_msg_list = bs_msg.split()
+				response = bs_msg_list[0]
+				status = bs_msg_list[1]
+				if response == "DBR":
+					if status == "OK":
+						reply += "OK\n"
+					elif status == "NOK":
+						reply += "NOK\n"
+					elif status == "ERR":
+						reply += "ERR\n"
+		
+		tcp_send(connection, reply)
 
 	return
 
@@ -413,6 +470,7 @@ def bs_udp():
 		print "Handle check udp"
 
 def main():
+	print AUX
 	print HOST
 	print "\n"
 	print CSPORT
