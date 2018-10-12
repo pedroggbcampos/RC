@@ -50,14 +50,13 @@ def udp_server_init():
 		print("Error initiating udp server connection: %s" % e)
 	return c
 
-def udp_client_init(address):
+def udp_client_init():
 	'''udp_client_init : {} -> connection
-	:: recebe um argumento do tipo address, inicia uma ligacao udp (cliente)
-	e devolve uma connection'''
+	:: inicia uma ligacao udp (cliente) e devolve uma connection'''
 	try:
 		c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		c.bind(address)
+	
 	except socket.error as e:
 		print("Error initiating udp client connection: %s" % e)
 	return c
@@ -359,7 +358,7 @@ def handle_user(connection, aut):
 					print "   "+command+" "+user+" "+user_dir+" "+ip_bs+" "+port_bs
 					if registered_in_bs(user, test_bs):
 						msg = "LSF " + user + " " + user_dir + "\n"
-						c = udp_client_init(bs_address)
+						c = udp_client_init()
 						udp_send(c, msg, bs_address)
 						bs_msg, bs_aux_addr = udp_receive(c)
 						udp_terminate(c)
@@ -376,7 +375,7 @@ def handle_user(connection, aut):
 					else:
 						register_in_bs(user, test_bs)
 						msg = "LSU " + user + " " + password + "\n"
-						c = udp_client_init(bs_address)
+						c = udp_client_init()
 						udp_send(c, msg, bs_address)
 						bs_msg, bs_aux_addr = udp_receive(c)
 						udp_terminate(c)
@@ -432,7 +431,7 @@ def handle_user(connection, aut):
 				ip_bs = bs_info[0]
 				port_bs = bs_info[1]
 				bs_address = (ip_bs, int(port_bs))
-				c = udp_client_init(bs_address)
+				c = udp_client_init()
 				msg += user + " " + user_dir
 				udp_send(c, msg, bs_address)
 				bs_msg, bs_aux_addr = udp_receive(c)
@@ -459,7 +458,7 @@ def handle_user(connection, aut):
 				ip_bs = bs_info[0]
 				port_bs = bs_info[1]
 				bs_address = (ip_bs, int(port_bs))
-				c = udp_client_init(bs_address)
+				c = udp_client_init()
 				msg += user + " " + user_dir + "\n"
 				udp_send(c, msg, bs_address)
 				bs_msg, bs_aux_addr = udp_receive(c)
