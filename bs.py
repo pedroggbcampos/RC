@@ -94,6 +94,7 @@ def udp_server_register():
     cs_addr =(ip_cs, CSPORT)
     
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    #s.bind(cs_addr)
     
     msg = "REG " + str(IPBS) + " " + str(BSPORT) + "\n"
     
@@ -138,6 +139,7 @@ def udp_server_init():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(bs_addr)
+    print bs_addr == ('192.168.1.2', 59000)
     return s
 '''
 	try:

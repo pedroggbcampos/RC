@@ -92,9 +92,10 @@ def udp_send(connection, msg, address):
 	total = len(msg.encode())
 	try:
 		sent = connection.sendto(msg, address)
+		print address == ('192.168.1.2', 59000)
 	except socket.error as e:
 		print("Error sending message through udp connection: %s" % e)
-	if sent != total :
+	#if sent != total :
 		#tratar erro udp
 
 def tcp_send(connection, msg):
@@ -355,6 +356,7 @@ def handle_user(connection, aut):
 					bs_address = (ip_bs, int(port_bs))
 					reply += ip_bs + " " + port_bs
 					test_bs = ip_bs + " " + port_bs + "\n"
+					print "   "+command+" "+user+" "+user_dir+" "+ip_bs+" "+port_bs
 					if registered_in_bs(user, test_bs):
 						msg = "LSF " + user + " " + user_dir + "\n"
 						c = udp_client_init(bs_address)
@@ -400,6 +402,7 @@ def handle_user(connection, aut):
 				ip_bs = bs_info[0]
 				port_bs = bs_info[1]
 				reply += ip_bs + " " + port_bs
+				print "   Restore " + rst_dir
 
 		elif command == "LSD": #completo
 			reply += "LDR "
@@ -407,6 +410,7 @@ def handle_user(connection, aut):
 				print "Protocol (syntax) error"
 				reply += "ERR\n"
 			else:
+				print "   List request"
 				path = HOME + "/" + dirname
 				dirs = os.listdir(path)
 				n = len(dirs)
