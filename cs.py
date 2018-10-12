@@ -35,25 +35,31 @@ def tcp_init():
 		s_tcp.bind(cs_address)
 		s_tcp.listen(BACKLOG)
 		connection_tcp, client_address = s_tcp.accept()
-		return connection_tcp
 	except socket.error as e:
 		print("Error initiating tcp connection: %s" % e)
+	return connection_tcp
 
 def udp_server_init():
 	'''udp_server_init : {} -> connection
 	:: inicia uma ligacao udp (servidor) e devolve uma connection'''
-	c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	c.bind(cs_address)
+	try:
+		c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		c.bind(cs_address)
+	except socket.error as e:
+		print("Error initiating udp server connection: %s" % e)
 	return c
 
 def udp_client_init(address):
 	'''udp_client_init : {} -> connection
 	:: recebe um argumento do tipo address, inicia uma ligacao udp (cliente)
 	e devolve uma connection'''
-	c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	c.bind(address)
+	try:
+		c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		c.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		c.bind(address)
+	except socket.error as e:
+		print("Error initiating udp client connection: %s" % e)
 	return c
 
 def tcp_receive(connection):
@@ -66,41 +72,30 @@ def tcp_receive(connection):
 			return None
 		while msg[-1:] != "\n":
 			msg += connection.recv(BUFFER_SIZE)
-		#print msg
-		return msg
 	except socket.error as e:
-		print("Error initiating tcp connection: %s" % e)
+		print("Error receiving message from tcp connection: %s" % e)
+	return msg
 
 def udp_receive(connection):
 	'''udp_receive : connection -> string
 	:: recebe um argumento do tipo connection e recebe uma mensagem atraves
 	de uma ligacao udp e devolve-a'''
-	#print "vou receber"
-	msg, bs_address = connection.recvfrom(BUFFER_SIZE)
-	#print "recebi"
-	#print msg
-	'''if msg == "":
-		return None
-	while msg[-1:] != "\n":
-		msg, bs_address += connection.recvfrom(BUFFER_SIZE)'''
+	try:
+		msg, bs_address = connection.recvfrom(BUFFER_SIZE)
+	except socket.error as e:
+		print("Error receiving message from udp connection: %s" % e)
 	return (msg, bs_address)
 
 def udp_send(connection, msg, address):
 	'''udp_send : connection x string x address -> {}
 	:: envia uma mensagem atraves de uma ligacao udp'''
 	total = len(msg.encode())
-	#sent foi apagado
-	print "manel vai mandar - "+ msg +" - para o endereco: " + str(address)
-	connection.sendto(msg, address)
-	#print sent
-	#while sent != total:
-	#	sent += connection.sendto(msg, address)
-	'''print "\n"
-	print msg
-	print "\n"
-	print str(address)
-	print "\n"'''
-	
+	try:
+		sent = connection.sendto(msg, address)
+	except socket.error as e:
+		print("Error sending message through udp connection: %s" % e)
+	if sent != total :
+		#tratar erro udp
 
 def tcp_send(connection, msg):
 	'''tcp_send : connection x string -> {}
@@ -109,17 +104,26 @@ def tcp_send(connection, msg):
 	total = len(msg.encode())
 	sent = 0
 	while sent < total:
-		sent += connection.send(msg)
+		try:
+			sent += connection.send(msg)
+		except socket.error as e:
+			print("Error sending message through tcp connection: %s" % e)
 
 def udp_terminate(connection):
 	'''udp_terminate : connection -> {}
 	:: recebe um argumento do tipo connection e fecha-a'''
-	connection.close()
+	try:
+		connection.close()
+	except socket.error as e:
+		print("Error closing udp connection: %s" % e)
 
 def tcp_terminate(connection):
 	'''tcp_terminate : connection -> {}
 	:: recebe um argumento do tipo connection e fecha-a'''
-	connection.close()
+	try:
+		connection.close()
+	except socket.error as e:
+		print("Error closing tcp connection: %s" % e)
 
 def get_bs_address(user, d):
 	'''get_bs_address : string x string -> list
@@ -127,20 +131,26 @@ def get_bs_address(user, d):
 	representa uma diretoria e devolve uma lista com o ip e o porto do servidor BS que
 	guardou essa diretoria'''
 	path = HOME + "/user_" + user + "/" + d
-	os.chdir(path)
-	f = open("ip_port.txt", "r")
-	line = f.read()
-	line_info = line.split()
-	os.chdir(HOME)
+	try:
+		os.chdir(path)
+		f = open("ip_port.txt", "r")
+		line = f.read()
+		line_info = line.split()
+		os.chdir(HOME)
+	except IOError as e:
+		print("Error getting BS address: %s" % e)
 	return line_info
 
 def get_available_bs():
 	'''get_available_bs : {} -> list
 	:: consulta a lista de BS's registados caso haja um disponivel devolve uma lista com
 	o seu ip e porto, caso contrario devolve None'''
-	f = open("bs_list.txt", "r")
-	bs = f.readline()
-	f.close()
+	try:
+		f = open("bs_list.txt", "r")
+		bs = f.readline()
+		f.close()
+	except IOError as e:
+		print("Error getting available BS: %s" % e)
 	if bs != "":
 		bs_info = bs.split()
 		return bs_info
@@ -153,9 +163,12 @@ def register_in_bs(user, bs):
 	representa um servidor BS e regista esse BS no ficheiro de servidores BS onde esse
 	utilizador esta registado'''
 	filename = "bss_" + user + ".txt"
-	f = open(filename, "a")
-	f.write(bs)
-	f.close()
+	try:
+		f = open(filename, "a")
+		f.write(bs)
+		f.close()
+	except IOError as e:
+		print("Error registering in BS: %s" % e)
 
 def registered_in_bs(user, bs):
 	'''registered_in_bs : string x string -> logico
@@ -163,11 +176,14 @@ def registered_in_bs(user, bs):
 	representa um servidor BS e devolve True caso esse utilizador ja se tenha registado
 	nesse servidor BS'''
 	filename = "bss_" + user + ".txt"
-	f = open(filename, "r")
-	bss = f.readlines()
+	try:
+		f = open(filename, "r")
+		bss = f.readlines()
+		f.close()
+	except IOError as e:
+		print("Error checking for regist in BS: %s" % e)
 	for l in bss:
 		if l == bs:
-			os.chdir(HOME)
 			return True
 	return False
 
@@ -212,7 +228,6 @@ def handle_bs(connection, msg, bs_address):
 	command = data_list[0]
 	ip_bs = data_list[1]
 	port_bs = data_list[2]
-	#bs_address = (ip_bs, int(port_bs))
 	bs = ip_bs + " " + port_bs + "\n"
 
 	if command == "REG": #completo
@@ -253,10 +268,7 @@ def handle_bs(connection, msg, bs_address):
 				reply += "NOK\n"
 			print "-BS: " + ip_bs + " " + port_bs
 			reply += "OK\n"
-	#print bs_address
-	#print reply
 	udp_send(connection, reply, bs_address)
-	#print "mandei"
 
 def handle_user(connection, aut):
 	aut_list = aut.split()
