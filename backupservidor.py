@@ -139,49 +139,48 @@ def udp_thread():
 
 def udp_server_register():
 	try:
-    	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    except socket.error:
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	except socket.error:
 		print 'Error creating socket [UDP]'
 		sys.exit()
 
-    
-    ip_cs = socket.gethostbyname(CSNAME)
-    cs_addr =(ip_cs, CSPORT)
-    
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    
-    msg = "REG " + str(IPBS) + " " + str(BSPORT) + "\n"
-    
+	ip_cs = socket.gethostbyname(CSNAME)
+	cs_addr =(ip_cs, CSPORT)
 
-    try:
-    	n_bytes = len(msg.encode())
-    	bytes_sent = s.sendto(msg, cs_addr)
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+	msg = "REG " + str(IPBS) + " " + str(BSPORT) + "\n"
+
+	try:
+		n_bytes = len(msg.encode())
+		bytes_sent = s.sendto(msg, cs_addr)
 		if bytes_sent != n_bytes or bytes_sent == -1:
 			print 'Error sending data[UDP]'
 	except socket.error:
 		print 'Error sending data[UDP]'
-    
-    data, cs_addr = s.recvfrom(BUFFER_SIZE)
-    handler_CS(data)
-    s.close()
+
+	data, cs_addr = s.recvfrom(BUFFER_SIZE)
+	handler_CS(data)
+	s.close()
 
 
 def udp_server_init():
 	try:
-    	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    except socket.error:
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	except socket.error:
 		print 'Error creating socket [UDP]'
 		sys.exit()
 
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    try:
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+	try:
 		s.bind(bs_addr)
 	except socket.error:
 		print 'Error binding socket to address[UDP]'
 		sys.exit()
 
-    print bs_addr == ('192.168.1.2', 59000)
-    return s
+	print bs_addr == ('192.168.1.2', 59000)
+	return s
 
 
 def udp_server(s):
@@ -190,13 +189,14 @@ def udp_server(s):
     except socket.error:
 		print 'Error transmiting data[UDP]'
     msg = handler_CS(data)
-	try:
-		bytes = len(msg.encode())
-		bytes_sent = s.sendto(msg, addr)
-		if bytes_sent != bytes or bytes_sent == -1:
-			print 'Error sending data[UDP]'
-	except socket.error:
-		print 'Error sending data[UDP]'
+
+    try:
+    	bytes = len(msg.encode())
+    	bytes_sent = s.sendto(msg, addr)
+    except socket.error:
+    	print 'Error sending data[UDP]'
+    if bytes_sent != bytes or bytes_sent == -1:
+    	print 'Error sending data[UDP]'
 		
 
 def udp_unregister():
