@@ -16,15 +16,16 @@ parser.add_argument('-p', '--CSport', default=58023, type=int, required=False, h
 
 args = parser.parse_args()
 
+BSNAME = socket.gethostname()
 BSPORT= int(args.BSport)
 CSNAME= str(args.CSname)
 CSPORT= int(args.CSport)
 
 #BSPORT = socket.getsockname()[1]
-IPBS = socket.gethostbyname(socket.gethostname())
+IPBS = socket.gethostbyname(BSNAME)
 
 udp_connection = None
-bs_addr = ("", BSPORT)
+bs_addr = (IPBS, BSPORT)
 
 
 def tcp_thread():
@@ -81,12 +82,29 @@ def udp_thread():
 	s = udp_server_init()
 	global udp_connection
 	udp_connection = s
-	while(True):
-		udp_server(s)
-	return
+	udp_server(s)
+	#while(True):
+		#udp_server(s)
+	#return
 
 def udp_server_register():
-	ip_cs = socket.gethostbyname(CSNAME)
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
+    ip_cs = socket.gethostbyname(CSNAME)
+    cs_addr =(ip_cs, CSPORT)
+    
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
+    msg = "REG " + str(IPBS) + " " + str(BSPORT) + "\n"
+    
+    bytes_sent = s.sendto(msg, cs_addr)
+    
+    data, cs_addr = s.recvfrom(BUFFER_SIZE)
+    handler_CS(data)
+    s.close()
+    #return
+    
+'''ip_cs = socket.gethostbyname(CSNAME)
 
 	cs_addr =(ip_cs, CSPORT)
 
@@ -102,7 +120,7 @@ def udp_server_register():
 	n_bytes = len(msg)
 	try:
 		bytes_sent = s.sendto(msg, cs_addr)
-		print (cs_addr)
+		print "mandei para : " + str(cs_addr)
 		print(msg)
 		if bytes_sent != n_bytes or bytes_sent == -1:
 			print 'Error sending data[UDP]'
@@ -113,11 +131,15 @@ def udp_server_register():
 	print (data)
 	handler_CS(data)
 
-	s.close()
+	s.close()'''
 
 
 def udp_server_init():
-
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(bs_addr)
+    return s
+'''
 	try:
 		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	except socket.error:
@@ -130,20 +152,30 @@ def udp_server_init():
 		print 'Error binding socket to address[UDP]'
 		sys.exit()
 
-	return s
+	print bs_addr
+	return s'''
 
 def udp_server(s):
-
+    print 'vasco vai receber no endereco: ' + str(bs_addr)
+    data, addr = s.recvfrom(BUFFER_SIZE)
+    print 'pais'
+    msg = handler_CS(data)
+    bytes_sent = s.sendto(msg, addr)
+    #return
+    
+''''
 	ip_cs = socket.gethostbyname(CSNAME)
 
 	cs_addr =(ip_cs, CSPORT)
 
 	try:
-		data,addr=s.recvfrom(BUFFER_SIZE)
-		if data==0:
-			return None
-		while data[-1:] != "\n":
-			data+= s.recvfrom(BUFFER_SIZE)
+		print 'vasco vai receber no endereco: ' + str(bs_addr)
+		data, addr = s.recvfrom(BUFFER_SIZE)
+		print 'pais'
+		#if data==0:
+			#return None
+		#while data[-1:] != "\n":
+			#data+= s.recvfrom(BUFFER_SIZE)
 		print (data)
 		msg = handler_CS(data)
 		bytes = len(msg)
@@ -156,7 +188,7 @@ def udp_server(s):
 	except socket.error:
 		print 'Error transmiting data[UDP]'
 
-	return
+	return'''
 
 def udp_unregister():
 
@@ -222,7 +254,7 @@ def handler_CS(msg):
 		if (msg[1]=="NOK\n" or msg[1]=="ERR\n"):
 			os._exit(0)
 		elif(msg[1] == "OK\n"):
-			return ""
+			return "LOL"
 
 	elif msg[0]=="UAR":
 		if (msg[1]=="NOK\n" or msg[1]=="ERR\n"):

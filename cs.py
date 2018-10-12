@@ -3,13 +3,13 @@ import sys
 import argparse
 import string
 import os
+import multiprocessing
 
 parser = argparse.ArgumentParser(description='Process invoking command.')
 parser.add_argument('-p', '--CSport', default=58023, type=int, required=False, help='port where the CS server accepts requests')
 
 args = parser.parse_args()
 
-AUX = socket.gethostname()
 HOST = socket.gethostbyname(socket.gethostname())
 BUFFER_SIZE = 80
 BACKLOG = 1
@@ -17,6 +17,8 @@ CSPORT = int(args.CSport)
 HOME = os.getcwd()
 
 cs_address = (HOST, CSPORT)
+
+lock = multiprocessing.Lock()
 
 def empty_dir(path):
 	'''empty_dir : string -> logico
@@ -35,7 +37,7 @@ def tcp_init():
 		connection_tcp, client_address = s_tcp.accept()
 		return connection_tcp
 	except socket.error as e:
-		print("Erros initiating tcp connection: %s" % e)
+		print("Error initiating tcp connection: %s" % e)
 
 def udp_server_init():
 	'''udp_server_init : {} -> connection
@@ -64,7 +66,7 @@ def tcp_receive(connection):
 			return None
 		while msg[-1:] != "\n":
 			msg += connection.recv(BUFFER_SIZE)
-		print msg
+		#print msg
 		return msg
 	except socket.error as e:
 		print("Error initiating tcp connection: %s" % e)
@@ -73,10 +75,10 @@ def udp_receive(connection):
 	'''udp_receive : connection -> string
 	:: recebe um argumento do tipo connection e recebe uma mensagem atraves
 	de uma ligacao udp e devolve-a'''
-	print "vou receber"
+	#print "vou receber"
 	msg, bs_address = connection.recvfrom(BUFFER_SIZE)
-	print bs_address
-	print msg
+	#print "recebi"
+	#print msg
 	'''if msg == "":
 		return None
 	while msg[-1:] != "\n":
@@ -87,11 +89,18 @@ def udp_send(connection, msg, address):
 	'''udp_send : connection x string x address -> {}
 	:: envia uma mensagem atraves de uma ligacao udp'''
 	total = len(msg.encode())
-	sent = connection.sendto(msg, address)
-	print sent
-	while sent != total:
-		sent += connection.sendto(msg, address)
-	print "merda"
+	#sent foi apagado
+	print "manel vai mandar - "+ msg +" - para o endereco: " + str(address)
+	connection.sendto(msg, address)
+	#print sent
+	#while sent != total:
+	#	sent += connection.sendto(msg, address)
+	'''print "\n"
+	print msg
+	print "\n"
+	print str(address)
+	print "\n"'''
+	
 
 def tcp_send(connection, msg):
 	'''tcp_send : connection x string -> {}
@@ -143,27 +152,23 @@ def register_in_bs(user, bs):
 	:: recebe um argumento do tipo string que representa um utilizador e uma string que
 	representa um servidor BS e regista esse BS no ficheiro de servidores BS onde esse
 	utilizador esta registado'''
-	path = HOME + "/" + "user_" + user
-	os.chdir(path)
-	f = open("bss.txt", "a")
+	filename = "bss_" + user + ".txt"
+	f = open(filename, "a")
 	f.write(bs)
 	f.close()
-	os.chdir(HOME)
 
 def registered_in_bs(user, bs):
 	'''registered_in_bs : string x string -> logico
 	:: recebe um argumento do tipo string que representa um utilizador e uma string que
 	representa um servidor BS e devolve True caso esse utilizador ja se tenha registado
 	nesse servidor BS'''
-	path = HOME + "/" + "user_" + user
-	os.chdir(path)
-	f = open("bss.txt", "r")
+	filename = "bss_" + user + ".txt"
+	f = open(filename, "r")
 	bss = f.readlines()
 	for l in bss:
 		if l == bs:
 			os.chdir(HOME)
 			return True
-	os.chdir(HOME)
 	return False
 
 def check_protocol(command, args):
@@ -172,7 +177,7 @@ def check_protocol(command, args):
 	lista com os restantes argumentos da mensagem, devolve True caso a mensagem esteja de
 	acordo com o protocolo e False caso contrario'''
 	n_args = len(args)
-	print "vou verificar uma mensagem com len " + str(n_args)
+	#print "vou verificar uma mensagem com len " + str(n_args)
 	if command == "AUT":
 		return n_args == 3
 	elif command == "DLU":
@@ -227,7 +232,7 @@ def handle_bs(connection, msg, bs_address):
 			print "+BS: " + ip_bs + " " + port_bs
 			reply += "OK\n"
 
-	elif command == "UNR": #incompleto
+	elif command == "UNR": #incompleto falta saber se o bs pode mesmo ir embora
 		reply += "UAR "
 		if not check_protocol(command, data_list):
 			print "Protocol (syntax) error"
@@ -237,6 +242,7 @@ def handle_bs(connection, msg, bs_address):
 				f = open("bs_list.txt", "r")
 				bs_list = f.readlines()
 				f.close()
+				os.remove("bs_list.txt")
 				f = open("bs_list.txt", "w")
 				for line in bs_list:
 					if line != bs:
@@ -247,10 +253,10 @@ def handle_bs(connection, msg, bs_address):
 				reply += "NOK\n"
 			print "-BS: " + ip_bs + " " + port_bs
 			reply += "OK\n"
-	print bs_address
-	print reply
+	#print bs_address
+	#print reply
 	udp_send(connection, reply, bs_address)
-	print "mandei"
+	#print "mandei"
 
 def handle_user(connection, aut):
 	aut_list = aut.split()
@@ -284,7 +290,7 @@ def handle_user(connection, aut):
 				f.write(password)
 				f.close()
 				os.mkdir(dirname)
-				f=open(dirname+"/"+"bss.txt", "w")
+				f=open("bss_" + user + ".txt", "w")
 				f.close()
 				print "New user: %s" % user
 				reply += "NEW\n"
@@ -310,6 +316,7 @@ def handle_user(connection, aut):
 				if empty_dir(path):
 					os.rmdir(dirname)
 					os.remove(filename)
+					os.remove("bss_" + user + ".txt")
 					print "User deleted: %s" % user
 					reply += "OK\n"
 				else:
@@ -456,44 +463,39 @@ def handle_user(connection, aut):
 
 	return
 
-def user_tcp():
+def user_tcp(lock):
 	while True:
-		print "Start tcp"
+		#print "Start tcp"
 		c = tcp_init()
-		print "Init check tcp"
+		#print "Init check tcp"
 		msg = tcp_receive(c)
-		print "Receive check tcp"
+		#print "Receive check tcp"
 		handle_user(c, msg)
-		print "Handle check tcp"
+		#print "Handle check tcp"
 		tcp_terminate(c)
-		print "Terminate check tcp"
+		#print "Terminate check tcp"
 	
 
-def bs_udp():
-	print "Start udp"
+def bs_udp(lock):
+	#print "Start udp"
 	c = udp_server_init()
-	print "Init check udp"
+	#print "Init check udp"
 	while True:
-		print "start while udp"
+		#print "start while udp"
 		msg, bs_address = udp_receive(c)
-		print "Receive check udp"
+		#print "Receive check udp"
 		handle_bs(c, msg, bs_address)
-		print "Handle check udp"
+		#print "Handle check udp"
 
 def main():
-	print AUX
-	print HOST
-	print "\n"
-	print CSPORT
-	print "\n"
 	try:
 		pid = os.fork()
 	except OSError as e:
 		print ("Error creating child process: %s" % e)
 	if pid == 0:
-		bs_udp()
+		bs_udp(lock)
 	else:
-		user_tcp()
+		user_tcp(lock)
 
 if __name__ == "__main__":
 	main()
