@@ -197,7 +197,6 @@ def check_protocol(msg):
 	acordo com o protocolo e False caso contrario'''
 	command = msg[0]
 	n_args = len(msg)
-	#print "vou verificar uma mensagem com len " + str(n_args)
 	if command == "ERR":
 		return False
 	elif command == "AUT":
@@ -495,27 +494,18 @@ def handle_user(connection, aut, lock):
 
 def user_tcp(lock):
 	while True:
-		#print "Start tcp"
+
 		c = tcp_init()
-		#print "Init check tcp"
 		msg = tcp_receive(c)
-		#print "Receive check tcp"
 		handle_user(c, msg, lock)
-		#print "Handle check tcp"
 		tcp_terminate(c)
-		#print "Terminate check tcp"
 	
 
 def bs_udp(lock):
-	#print "Start udp"
 	c = udp_server_init()
-	#print "Init check udp"
 	while True:
-		#print "start while udp"
 		msg, bs_address = udp_receive(c)
-		#print "Receive check udp"
 		handle_bs(c, msg, bs_address)
-		#print "Handle check udp"
 
 def main():
 	os.rmdir()
