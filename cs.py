@@ -5,6 +5,8 @@ import string
 import os
 import multiprocessing
 
+#Faltam os timeouts
+
 parser = argparse.ArgumentParser(description='Process invoking command.')
 parser.add_argument('-p', '--CSport', default=58023, type=int, required=False, help='port where the CS server accepts requests')
 
@@ -270,7 +272,7 @@ def handle_bs(connection, msg, bs_address):
 			reply += "OK\n"
 	udp_send(connection, reply, bs_address)
 
-def handle_user(connection, aut):
+def handle_user(connection, aut, lock):
 	aut_list = aut.split()
 	aut_command = aut_list[0]
 	reply = ""
@@ -324,6 +326,7 @@ def handle_user(connection, aut):
 				print "Protocol (syntax) error"
 				reply += "ERR\n"
 			else:
+				print "   Delete user request"
 				path = HOME + "/" + dirname
 				if empty_dir(path):
 					os.rmdir(dirname)
@@ -358,10 +361,12 @@ def handle_user(connection, aut):
 					print "   "+command+" "+user+" "+user_dir+" "+ip_bs+" "+port_bs
 					if registered_in_bs(user, test_bs):
 						msg = "LSF " + user + " " + user_dir + "\n"
+						lock.acquire()
 						c = udp_client_init()
 						udp_send(c, msg, bs_address)
 						bs_msg, bs_aux_addr = udp_receive(c)
 						udp_terminate(c)
+						lock.release()
 						bs_msg_list = bs_msg.split()
 						response = bs_msg_list[0]
 						n = bs_msg_list[1]
@@ -375,10 +380,12 @@ def handle_user(connection, aut):
 					else:
 						register_in_bs(user, test_bs)
 						msg = "LSU " + user + " " + password + "\n"
+						lock.acquire()
 						c = udp_client_init()
 						udp_send(c, msg, bs_address)
 						bs_msg, bs_aux_addr = udp_receive(c)
 						udp_terminate(c)
+						lock.release()
 						bs_msg_list = bs_msg.split()
 						response = bs_msg_list[0]
 						status = bs_msg_list[1]
@@ -431,11 +438,13 @@ def handle_user(connection, aut):
 				ip_bs = bs_info[0]
 				port_bs = bs_info[1]
 				bs_address = (ip_bs, int(port_bs))
+				lock.acquire()
 				c = udp_client_init()
 				msg += user + " " + user_dir
 				udp_send(c, msg, bs_address)
 				bs_msg, bs_aux_addr = udp_receive(c)
 				udp_terminate(c)
+				lock.release()
 				bs_msg_list = bs_msg.split()
 				response = bs_msg_list[0]
 				if response == "LFD":
@@ -458,11 +467,13 @@ def handle_user(connection, aut):
 				ip_bs = bs_info[0]
 				port_bs = bs_info[1]
 				bs_address = (ip_bs, int(port_bs))
+				lock.acquire()
 				c = udp_client_init()
 				msg += user + " " + user_dir + "\n"
 				udp_send(c, msg, bs_address)
 				bs_msg, bs_aux_addr = udp_receive(c)
 				udp_terminate(c)
+				lock.release()
 				bs_msg_list = bs_msg.split()
 				response = bs_msg_list[0]
 				status = bs_msg_list[1]
@@ -485,7 +496,7 @@ def user_tcp(lock):
 		#print "Init check tcp"
 		msg = tcp_receive(c)
 		#print "Receive check tcp"
-		handle_user(c, msg)
+		handle_user(c, msg, lock)
 		#print "Handle check tcp"
 		tcp_terminate(c)
 		#print "Terminate check tcp"
