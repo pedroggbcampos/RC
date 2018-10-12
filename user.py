@@ -6,7 +6,7 @@ import datetime
 
 HOST = socket.gethostname()
 PORT = 58023
-BUFFER_SIZE = 500
+BUFFER_SIZE = 500000
 
 USER = None
 PASS = None
@@ -41,6 +41,30 @@ HOST = socket.gethostbyname(HOST)
 server_address = (HOST, int(PORT))
 print(socket.gethostname())
 print(socket.gethostbyname(socket.gethostname()))
+
+
+
+def tcp_receive(connection, n_bytes):
+	'''tcp_receive : connection -> string
+	:: recebe um argumento do tipo connection e recebe uma mensagem atraves
+	de uma ligacao tcp e devolve-a'''
+	msg = ""
+	try:
+		msg = connection.recv(n_bytes)
+		if msg == "":
+			return None
+	except socket.error as e:
+		print("Error receiving message from tcp connection: %s" % e)
+	return msg
+
+def tcp_terminate(connection):
+	'''tcp_terminate : connection -> {}
+	:: recebe um argumento do tipo connection e fecha-a'''
+	try:
+		connection.close()
+	except socket.error as e:
+		print("Error closing tcp connection: %s" % e)
+
 def tcp_client(server_address, msg, authentication):
 	data = ""
         if authentication == True:
@@ -161,7 +185,7 @@ def logged_in_bool():
 		return True
 
 def read_file(file_path):
-	file = open(file_path, mode="r")
+	file = open(file_path, mode="rb")
 	content = file.read()
 	file.close()
 	return content
@@ -297,7 +321,7 @@ def main():
 						if status[1] == "EOF\n":
 							print ("Could not complete restore request. No backup servers available")
 							break
-                                                elif status[1] == "ERR\n":
+						elif status[1] == "ERR\n":
 							print ("Request was not well formulated")
 							break
 						Bs_ip = status[1]
@@ -310,15 +334,14 @@ def main():
 							msg = "UPL " + bck_dir + " " + nr_files
 							file_names = ""
 							for i in range(4, len(status)-3, 4):
-								msg += " " + status[i] + " " + status[i+1] + " " + status[i+2]
+								msg += " " + status[i] + " " + status[i+1] + " " + status[i+2] + " " + status[i+3]
 								file_names += status[i] + "\n"
 								file_path = dir_path + "/" + status[i]
-								file = open(file_path, mode="r")
 								content = read_file(file_path)
 								msg += " " + content
 							msg += "\n"
 							print(msg)
-                                                        data = tcp_client((Bs_ip, int(Bs_port)), msg, True)  ################ mudar server address para o do backup	--> data = tcp_client((Bs_ip, Bs_port), msg, True)
+							data = tcp_client((Bs_ip, int(Bs_port)), msg, True)
 							if aut_failed(data):
 								break
 							if socket_timeout(data):
@@ -404,7 +427,7 @@ def main():
 							data = data[bite:]
 							print file_info
 
-							file = open(directory + "/" + file_info[0] , "w")
+							file = open(directory + "/" + file_info[0] , "wb")
 							for c in range (0, int(file_info[2])):
 								file.write(data[c])
 							file.close()

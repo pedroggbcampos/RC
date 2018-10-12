@@ -14,7 +14,7 @@ parser.add_argument('-p', '--CSport', default=58023, type=int, required=False, h
 args = parser.parse_args()
 
 HOST = socket.gethostbyname(socket.gethostname())
-BUFFER_SIZE = 80
+BUFFER_SIZE = 500000
 BACKLOG = 1
 CSPORT = int(args.CSport)
 HOME = os.getcwd()
