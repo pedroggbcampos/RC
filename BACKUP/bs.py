@@ -7,7 +7,7 @@ import shutil
 import signal
 from threading import Thread
 
-BUFFER_SIZE=80
+BUFFER_SIZE=200000
 
 parser= argparse.ArgumentParser(description='Process invoking command.')
 parser.add_argument('-b', '--BSport', default=59000, type=int, required=False, help='port where the BS server accepts requests')
@@ -30,12 +30,34 @@ bs_addr = (IPBS, BSPORT)
 recent_user = ""
 HOME = os.getcwd()
 
+def tcp_receive(connection, n_bytes):
+	'''tcp_receive : connection -> string
+	:: recebe um argumento do tipo connection e recebe uma mensagem atraves
+	de uma ligacao tcp e devolve-a'''
+	msg = ""
+	try:
+		msg = connection.recv(n_bytes)
+		if msg == "":
+			return None
+	except socket.error as e:
+		print("Error receiving message from tcp connection: %s" % e)
+	return msg
+
+def tcp_terminate(connection):
+	'''tcp_terminate : connection -> {}
+	:: recebe um argumento do tipo connection e fecha-a'''
+	try:
+		connection.close()
+	except socket.error as e:
+		print("Error closing tcp connection: %s" % e)
+
 def tcp_thread():
+	s = tcp_init()
 	while True:
-		tcp_server()
+		tcp_server(s)
 	return
 
-def tcp_server():
+def tcp_init():
 	tcp_addr=("", BSPORT)
 
 	try:
@@ -48,8 +70,11 @@ def tcp_server():
 		s.bind(tcp_addr)
 	except socket.error:
 		print 'Error binding socket to address[TCP]'
-		sys.exit()
+		sys.exit()	
+	return s
 
+
+def tcp_server(s):
 	try:
 		s.listen(1)
 	except socket.error:
@@ -61,16 +86,20 @@ def tcp_server():
 		print 'Error accepting connection'
 	while (True):
 		try:
-			data = connection.recv(BUFFER_SIZE)
+			data = connection.recv(3)
 			if data == "":
 				break
+
 			elif data == 0:
 				print 'Error transmiting data[TCP]'
 				break
-			while(data[-1]!="\n"):
-				data += connection.recv(BUFFER_SIZE)
-			print data
-			msg = handler_USER(data)
+			elif data == "UPL":
+				msg = handler_USER(data, connection)
+			elif data != "UPL":
+				while(data[-1]!="\n"):
+					data += connection.recv(BUFFER_SIZE)
+				print data
+				msg = handler_USER(data, connection)
 			connection.send(msg)
 			break
 		except socket.error:
@@ -78,16 +107,19 @@ def tcp_server():
 			break
 	while (True):
 		try:
-			data = connection.recv(BUFFER_SIZE)
+			data = connection.recv(3)
 			if data == "":
 				break
 			elif data == 0:
 				print 'Error transmiting data[TCP]'
 				break
-			while(data[-1]!="\n"):
-				data += connection.recv(BUFFER_SIZE)
-			print data
-			msg = handler_USER(data)
+			elif data == "UPL":
+				msg = handler_USER(data, connection)
+			elif data != "UPL":
+				while(data[-1]!="\n"):
+					data += connection.recv(BUFFER_SIZE)
+				print data
+				msg = handler_USER(data, connection)
 			connection.send(msg)
 			break
 		except socket.error:
@@ -96,7 +128,7 @@ def tcp_server():
 
 	connection.close()
 
-	return
+	return s
 
 def udp_thread():
 	s = udp_server_init()
@@ -359,7 +391,7 @@ def add_user_bs(id, p):
 		os.mkdir(path)
 	return
 
-def handler_USER(msg):
+def handler_USER(msg, s):
 	path="/BS/user"
 	mens = msg.split(" ")
 
@@ -373,36 +405,49 @@ def handler_USER(msg):
 			n_msg="AUR NOK\n"
 
 	elif mens[0]=="UPL":
-		print(recent_user)
-		data = msg
-		bite = 3 + 3 + len(mens[1]) + len(mens[2]) 
-		nr_files = mens[2]
-		direc = mens[1]
-		data = data[bite:]
-		file_names = ""
-		os.chdir("user_" + recent_user)
-		os.mkdir(mens[1])
-		print(os.getcwd())
-		directory = mens[1]
-		os.chdir(directory)
-		print(os.getcwd())
-		for f in range(0, int(nr_files)):
-			file_info = data.split(" ")
-			bite = len(file_info[0]) + len(file_info[1]) + len(file_info[2]) + 3
-			data = data[bite:]
-			print file_info
+		try:
+			print(recent_user)
+			data = msg
+			counter = 0
+			while counter != 3:
+				data += tcp_receive(s, 1)
+				if data[-1:] == " ":
+					counter += 1
+			mens = data.split(" ") 
+			nr_files = mens[2]
+			direc = mens[1]
+			file_names = ""
+			os.chdir("user_" + recent_user)
+			os.mkdir(mens[1])
+			print(os.getcwd())
+			os.chdir(direc)
+			print(os.getcwd())
+			for f in range(0, int(nr_files)):
+				data = ""
+				counter = 0
+				while counter != 4:
+					data += tcp_receive(s, 1)
+					if data[-1:] == " ":
+						counter += 1
+				file_info = data.split(" ")
+				data_size = file_info[3]
+				data += tcp_receive(s, int(data_size))
+				print file_info
 
-			file = open(file_info[0] , 'wb')
-			for c in range (0, int(file_info[2])):
-				file.write(data[c])
-			file.close()
-			file_names += file_info[0] + "\n"
-			bite = int(file_info[2]) + 1
-			data = data[bite:]
-		os.chdir(HOME)
-		print("Successful restore")
-		print("Directory: %s" % direc)
-		print(file_names)
+				file = open(file_info[0] , 'wb')
+				for c in range (0, int(data_size)):
+					file.write(data[c])
+				file.close()
+				file_names += file_info[0] + "\n"
+				print(data)
+				data += tcp_receive(s, 1)
+			os.chdir(HOME)
+			print("Successful backup")
+			print("Directory: %s" % direc)
+			print(file_names)
+			n_msg = "UPR OK\n"
+		except e:
+			n_msg = "UPR NOK"
 
 		
 	elif mens[0]=="RSB":
